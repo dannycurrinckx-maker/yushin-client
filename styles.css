@@ -1,0 +1,167 @@
+/* Yushin SaaS client — stylesheet (taak #72).
+   Kleurwaarden zijn overgenomen uit de :root van tcm_10plus2_chatbot.html
+   (Yushin-huisstijl, taak #64) voor merkherkenning — dit is enkel de
+   dezelfde set kleurconstanten, geen andere overname. */
+
+:root {
+  --bg: #1E2A24;
+  --card: #25332C;
+  --ink: #F2EFEA;
+  --muted: #A9B6AE;
+  --accent: #C8A96B;
+  --accent-2: #8B1E1E;
+  --accent-light: #32413A;
+  --border: #3C4A43;
+  --good: #7BAE8C;
+  --warn: #D9A24B;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Montserrat", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+  background:
+    radial-gradient(1200px 400px at 50% -80px, rgba(200,169,107,0.10), transparent 60%),
+    var(--bg);
+  color: var(--ink);
+  display: flex;
+  justify-content: center;
+  padding: 24px 12px 40px;
+  min-height: 100vh;
+}
+
+#app {
+  width: 100%;
+  max-width: 720px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.topbar .brand {
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.03em;
+  color: var(--accent);
+}
+.topbar .muted {
+  margin-left: auto;
+  font-size: 13px;
+}
+.lang-switch { display: flex; gap: 4px; margin-left: auto; }
+.lang-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.lang-btn.active { border-color: var(--accent); color: var(--accent); }
+.topbar .muted + .btn { margin-left: 8px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.25);
+}
+
+h2 { margin: 0 0 16px; font-size: 20px; line-height: 1.4; }
+h3 { margin: 0 0 8px; font-size: 16px; }
+h4 { margin: 0 0 4px; font-size: 15px; color: var(--accent); }
+p { line-height: 1.5; }
+.muted { color: var(--muted); font-size: 13px; }
+
+.field { margin-bottom: 14px; display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 13px; color: var(--muted); }
+.field input, input[type="text"], input[type="email"], input[type="password"] {
+  background: var(--accent-light);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+.field input:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-primary { background: var(--accent); color: #1E2A24; }
+.btn-primary:disabled { opacity: 0.6; cursor: default; }
+.btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--ink); }
+.btn-link { background: none; border: none; color: var(--accent); text-decoration: underline; cursor: pointer; padding: 8px 0; font-size: 13px; }
+
+.error {
+  background: rgba(139,30,30,0.18);
+  border: 1px solid var(--accent-2);
+  color: #F2C9C9;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.options { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.opt-btn {
+  text-align: left;
+  background: var(--accent-light);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.opt-btn:hover { border-color: var(--accent); }
+
+.section-title { color: var(--accent); font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+
+.progress { height: 6px; background: var(--accent-light); border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+.progress-fill { height: 100%; background: var(--accent); transition: width 0.2s ease; }
+.progress-label { margin-bottom: 14px; }
+
+.result-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: var(--accent-light);
+}
+.result-card.rank1 { border-color: var(--accent); }
+.meter { height: 6px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; margin: 6px 0; }
+.meter-fill { height: 100%; background: var(--warn); }
+.result-card details { margin-top: 6px; font-size: 13px; color: var(--muted); }
+.result-card summary { cursor: pointer; color: var(--accent); }
+
+.conclusion { font-style: italic; color: var(--ink); }
+
+.clock-card { margin-top: 16px; text-align: center; }
+.clock-wrap { display: flex; justify-content: center; margin: 8px 0; }
+
+.therapy-plan { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px; }
+.therapy-plan-card {
+  background: var(--accent-light);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.auth-card { max-width: 420px; margin: 40px auto 0; }
+
+@media (max-width: 640px) {
+  .card { padding: 16px; }
+}
