@@ -168,7 +168,14 @@ p { line-height: 1.5; }
 .landing { max-width: 560px; margin: 8px auto 0; text-align: center; }
 .landing .auth-card { margin: 20px auto 0; text-align: left; }
 .hero { padding: 8px 12px 0; }
-.hero-logo svg { width: 72px; height: 72px; }
+.hero-logo {
+  display: block;
+  margin: 0 auto;
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  border-radius: 50%;
+}
 .hero-title { margin: 14px 0 8px; font-size: 22px; color: var(--ink); }
 .hero-description {
   margin: 0 auto;
