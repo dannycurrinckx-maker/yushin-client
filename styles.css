@@ -162,6 +162,22 @@ p { line-height: 1.5; }
 
 .auth-card { max-width: 420px; margin: 40px auto 0; }
 
+/* Landingspagina-blok boven het inlog-/registratieformulier (logo + korte
+   uitleg wat Yushin doet) — dit inlogscherm is voor de meeste bezoekers
+   (incl. demo-links) het allereerste dat ze te zien krijgen. */
+.landing { max-width: 560px; margin: 8px auto 0; text-align: center; }
+.landing .auth-card { margin: 20px auto 0; text-align: left; }
+.hero { padding: 8px 12px 0; }
+.hero-logo svg { width: 72px; height: 72px; }
+.hero-title { margin: 14px 0 8px; font-size: 22px; color: var(--ink); }
+.hero-description {
+  margin: 0 auto;
+  max-width: 480px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 @media (max-width: 640px) {
   .card { padding: 16px; }
 }
