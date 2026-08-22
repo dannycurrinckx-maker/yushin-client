@@ -20,6 +20,20 @@
 (function () {
   "use strict";
 
+  // Minimalistisch lijn-logo (kruidensprietje boven een pols/qi-golflijn, in
+  // een cirkel), verbatim overgenomen uit de oorspronkelijke client-side tool
+  // (tcm_10plus2_chatbot.html, LOGO_SVG, taak #64-rebrand) — gebruikt de
+  // CSS-variabelen --accent/--accent-2 uit styles.css, zodat het automatisch
+  // in de Yushin-huisstijl blijft meekleuren.
+  const LOGO_SVG = `
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Yushin logo">
+  <circle cx="50" cy="50" r="45" fill="none" stroke="var(--accent-2)" stroke-width="4"/>
+  <line x1="50" y1="66" x2="50" y2="36" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M50,48 C39,45 34,34 41,26 C46,35 49,41 50,48 Z" fill="var(--accent)"/>
+  <path d="M50,48 C61,45 66,34 59,26 C54,35 51,41 50,48 Z" fill="var(--accent-2)"/>
+  <path d="M26,68 L35,68 L39,58 L45,76 L49,68 L74,68" fill="none" stroke="var(--accent-2)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
   const API_BASE_KEY = "yushin_api_base";
   const TOKEN_KEY = "yushin_token";
   const USER_KEY = "yushin_user";
@@ -73,6 +87,9 @@
   const UI = {
     nl: {
       appTitle: "Yushin",
+      heroTitle: "Yushin — digitale TCM-anamnese",
+      heroDescription:
+        "Yushin begeleidt je (of je patiënt) stap voor stap door een gestructureerde TCM-anamnese van 78 vragen, en genereert automatisch een rapport met de belangrijkste disharmoniepatronen, een orgaanklok-overzicht en een bijpassend therapieplan. Log in of registreer je praktijk om te starten.",
       loginTitle: "Inloggen",
       registerTitle: "Nieuwe praktijk registreren",
       email: "E-mailadres",
@@ -120,6 +137,9 @@
     },
     en: {
       appTitle: "Yushin",
+      heroTitle: "Yushin — digital TCM intake",
+      heroDescription:
+        "Yushin guides you (or your patient) step by step through a structured 78-question TCM intake, and automatically generates a report with the key disharmony patterns, an organ-clock overview, and a matching treatment plan. Log in or register your practice to get started.",
       loginTitle: "Log in",
       registerTitle: "Register a new practice",
       email: "Email address",
@@ -322,7 +342,22 @@
 
   // --- Scherm: authenticatie ----------------------------------------------
 
+  // Het inlogscherm is tegelijk de landingspagina (eerste scherm dat iedereen
+  // — ook een demo-bezoeker die nog nooit van Yushin gehoord heeft — te zien
+  // krijgt), dus toont behalve het logo ook in het kort wat de tool doet,
+  // vóór het inlog-/registratieblok.
+  function renderHero() {
+    const hero = el("div", { class: "hero" });
+    hero.appendChild(el("div", { class: "hero-logo", html: LOGO_SVG }));
+    hero.appendChild(el("h1", { class: "hero-title", text: ui("heroTitle") }));
+    hero.appendChild(el("p", { class: "hero-description", text: ui("heroDescription") }));
+    return hero;
+  }
+
   function renderAuth() {
+    const outer = el("div", { class: "landing" });
+    outer.appendChild(renderHero());
+
     const wrap = el("div", { class: "card auth-card" });
     if (isDevMode()) {
       wrap.appendChild(
@@ -378,7 +413,8 @@
       })
     );
 
-    return wrap;
+    outer.appendChild(wrap);
+    return outer;
 
     function field(name, labelText, type) {
       return el("div", { class: "field" }, [
