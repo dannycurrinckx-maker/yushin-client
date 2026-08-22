@@ -170,6 +170,15 @@
     const v = (UI[lang] && UI[lang][key]) || UI.nl[key];
     return v === undefined ? key : v;
   }
+  // ?dev=1 toont het server-adresveld op het inlogscherm (enkel nuttig tijdens
+  // ontwikkelen/testen, bv. om naar een lokale of staging-Worker te wijzen).
+  // Voor gewone bezoekers/klanten blijft dit veld verborgen — de standaardwaarde
+  // (production-Worker) is toch al correct, en het toont anders onnodige
+  // technische infrastructuur op wat het eerste scherm is dat een (potentiële)
+  // klant tijdens een demo te zien krijgt.
+  function isDevMode() {
+    return new URLSearchParams(location.search).get("dev") === "1";
+  }
   // t(): dezelfde functie-vorm als het oorspronkelijke script — leest uit de
   // verbatim overgenomen STRINGS_BY_LANG (global, uit strings.js).
   function t(key) {
@@ -315,19 +324,21 @@
 
   function renderAuth() {
     const wrap = el("div", { class: "card auth-card" });
-    wrap.appendChild(
-      el("div", { class: "field" }, [
-        el("label", { text: ui("apiUrlLabel") }),
-        el("input", {
-          type: "text",
-          value: apiBase,
-          oninput: (e) => {
-            apiBase = e.target.value;
-            localStorage.setItem(API_BASE_KEY, apiBase);
-          },
-        }),
-      ])
-    );
+    if (isDevMode()) {
+      wrap.appendChild(
+        el("div", { class: "field" }, [
+          el("label", { text: ui("apiUrlLabel") }),
+          el("input", {
+            type: "text",
+            value: apiBase,
+            oninput: (e) => {
+              apiBase = e.target.value;
+              localStorage.setItem(API_BASE_KEY, apiBase);
+            },
+          }),
+        ])
+      );
+    }
 
     wrap.appendChild(el("h2", { text: authMode === "login" ? ui("loginTitle") : ui("registerTitle") }));
     if (authError) wrap.appendChild(el("div", { class: "error", text: authError }));
@@ -932,10 +943,37 @@
     return wrap;
   }
 
+  // Snelle demo-login (taak #83) — enkel actief via ?demo=1 in de URL, bv.
+  // https://.../yushin-client/?demo=1, zodat Danny tijdens een live demo aan
+  // een (potentiële) klant niet zelf hoeft in te loggen: de link opent direct
+  // ingelogd op een apart demo-praktijkaccount. Bewust GEEN echte
+  // patiëntgegevens in dit account — de inloggegevens staan hieronder in de
+  // (publieke) broncode van deze client, dat is voor een demo-only account
+  // aanvaardbaar maar zou dat niet zijn voor een echt praktijkaccount.
+  const DEMO_CREDENTIALS = { email: "demo@yushin-demo.app", password: "YushinDemo2026!" };
+
+  async function tryDemoAutoLogin() {
+    authBusy = true;
+    render();
+    try {
+      const data = await api("/api/auth/login", "POST", DEMO_CREDENTIALS);
+      onAuthSuccess(data, { isNewRegistration: false });
+    } catch (err) {
+      authError = err.message;
+      authBusy = false;
+      render();
+    }
+  }
+
   // Bij een pagina-herlaad met een reeds bestaande, opgeslagen sessie (geen
   // verse login/registratie) is er nog geen orgInfo — haal die dan ook op,
   // zodat de proefperiode-badge ook na een herlaad zichtbaar blijft.
-  if (token) fetchOrganizationInfo();
-
-  render();
+  if (token) {
+    fetchOrganizationInfo();
+    render();
+  } else if (new URLSearchParams(location.search).get("demo") === "1") {
+    tryDemoAutoLogin();
+  } else {
+    render();
+  }
 })();
