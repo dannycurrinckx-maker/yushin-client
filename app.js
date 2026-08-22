@@ -20,19 +20,12 @@
 (function () {
   "use strict";
 
-  // Minimalistisch lijn-logo (kruidensprietje boven een pols/qi-golflijn, in
-  // een cirkel), verbatim overgenomen uit de oorspronkelijke client-side tool
-  // (tcm_10plus2_chatbot.html, LOGO_SVG, taak #64-rebrand) — gebruikt de
-  // CSS-variabelen --accent/--accent-2 uit styles.css, zodat het automatisch
-  // in de Yushin-huisstijl blijft meekleuren.
-  const LOGO_SVG = `
-<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Yushin logo">
-  <circle cx="50" cy="50" r="45" fill="none" stroke="var(--accent-2)" stroke-width="4"/>
-  <line x1="50" y1="66" x2="50" y2="36" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>
-  <path d="M50,48 C39,45 34,34 41,26 C46,35 49,41 50,48 Z" fill="var(--accent)"/>
-  <path d="M50,48 C61,45 66,34 59,26 C54,35 51,41 50,48 Z" fill="var(--accent-2)"/>
-  <path d="M26,68 L35,68 L39,58 L45,76 L49,68 L74,68" fill="none" stroke="var(--accent-2)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
+  // Het echte Yushin-embleem (zilveren drakengolf met gouden acupunctuurnaald),
+  // verbatim overgenomen uit de oorspronkelijke client-side tool
+  // (tcm_10plus2_chatbot.html, MEI_AVATAR_DATAURL, taak #64-rebrand). Bewust
+  // als data-URL ingebed i.p.v. apart bestand: GitHubs webeditor/upload-flow
+  // in deze sessie ondersteunt geen losse binaire bestanden, enkel tekst.
+  const LOGO_DATAURL = "data:image/webp;base64,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";
 
   const API_BASE_KEY = "yushin_api_base";
   const TOKEN_KEY = "yushin_token";
@@ -348,7 +341,7 @@
   // vóór het inlog-/registratieblok.
   function renderHero() {
     const hero = el("div", { class: "hero" });
-    hero.appendChild(el("div", { class: "hero-logo", html: LOGO_SVG }));
+    hero.appendChild(el("img", { class: "hero-logo", src: LOGO_DATAURL, alt: "Yushin logo" }));
     hero.appendChild(el("h1", { class: "hero-title", text: ui("heroTitle") }));
     hero.appendChild(el("p", { class: "hero-description", text: ui("heroDescription") }));
     return hero;
