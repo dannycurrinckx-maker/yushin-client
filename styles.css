@@ -103,6 +103,9 @@ p { line-height: 1.5; }
 .btn-primary:disabled { opacity: 0.6; cursor: default; }
 .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--ink); }
 .btn-link { background: none; border: none; color: var(--accent); text-decoration: underline; cursor: pointer; padding: 8px 0; font-size: 13px; }
+/* Automatische demo-invulknop (taak #90) — dashed rand als visuele cue dat
+   dit een testhulpmiddel is, net als in de oude client-side tool. */
+.btn-demo-autofill { border-style: dashed; }
 
 .error {
   background: rgba(139,30,30,0.18);
