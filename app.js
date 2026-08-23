@@ -58,6 +58,15 @@
   // resultaatscherm laat herrenderen zonder de pop-up. Wordt gereset
   // telkens een nieuw resultaat binnenkomt (zie fetchResult hieronder).
   let assistantPopupDismissed = false;
+  // Gespreksstatus van de Yushin-assistent-pop-up (taak #91) — het
+  // therapieplan-voorstel wordt niet meer standaard in de resultaten
+  // getoond. De assistent stelt eerst een keuzemenu voor ("wil je het
+  // voorstel zien?"); enkel als de therapeut daar expliciet op ingaat,
+  // opent het gesprek verder en verschijnt de inhoud als losse
+  // chatberichten — vergelijkbaar met hoe een WhatsApp-gesprek verder
+  // opengaat. Wordt samen met assistantPopupDismissed gereset bij elk
+  // nieuw resultaat (zie fetchResult).
+  let assistantConversationOpen = false;
 
   // Automatische demo-invulling (taak #90) — herbouwde, SaaS-versie van
   // autoFillDemo() uit de oude client-side tool. autoDemoBusy voorkomt
@@ -156,6 +165,9 @@
       demoCodeButton: "Ga",
       demoCodeInvalid: "Ongeldige code.",
       assistantSpeechIntro: "Op basis van dit patroon stel ik onderstaand therapieplan voor:",
+      assistantAskShowPlan: "Wil je dat ik een vrijblijvend therapieplan-voorstel toon voor dit patroon?",
+      assistantShowPlanBtn: "Ja, toon het voorstel",
+      assistantDismissBtn: "Nee, bedankt",
       autoDemoBtn: "🧪 Demo: automatisch invullen",
       autoDemoConfirm:
         "Dit vult de vragenlijst automatisch in met telkens de eerste antwoordoptie, enkel om snel een indruk te geven van de app. Gebruik dit nooit tijdens een echt consult — de resultaten zijn nep. Doorgaan?",
@@ -215,6 +227,9 @@
       demoCodeButton: "Go",
       demoCodeInvalid: "Invalid code.",
       assistantSpeechIntro: "Based on this pattern, here is my proposed treatment plan:",
+      assistantAskShowPlan: "Would you like me to show a proposed treatment plan for this pattern?",
+      assistantShowPlanBtn: "Yes, show the proposal",
+      assistantDismissBtn: "No, thanks",
       autoDemoBtn: "🧪 Demo: auto-fill",
       autoDemoConfirm:
         "This automatically fills in the questionnaire by always picking the first answer option, just to quickly show what the app can do. Never use this during a real consultation — the results are fake. Continue?",
@@ -763,13 +778,19 @@
     return el("button", { class: "opt-btn", text: label, onclick: onClick });
   }
 
-  // Yushin-assistent als losstaande chatbubbel-pop-up (taak #89) — op
-  // verzoek van Danny losgekoppeld van de tekst van het therapieplan en
-  // getoond als een zwevend berichtvenster rechtsonder in beeld
-  // (vergelijkbaar met een WhatsApp-bericht), met een sluitkruisje.
-  // Vervangt de inline-variant boven het therapieplan uit taak #88.
-  function renderAssistantBubble(text) {
+  // Yushin-assistent als losstaande chatbubbel-pop-up (taak #89), nu
+  // uitgebreid met een keuzemenu (taak #91): het therapieplan-voorstel
+  // verschijnt bewust NIET meer automatisch in de resultatentekst. De
+  // assistent vraagt eerst of de therapeut het wil zien; enkel bij "Ja"
+  // opent het gesprek verder en verschijnt de inhoud als losse
+  // chatberichten, zoals een doorlopend WhatsApp-gesprek.
+  // assistantConversationOpen (taak #91) onthoudt die keuze binnen dit
+  // resultaat; assistantPopupDismissed (taak #89) sluit de hele pop-up.
+  function renderAssistantPopup(therapyPlan) {
     if (assistantPopupDismissed) return null;
+    const hasPlan = therapyPlan && (therapyPlan.matched.length > 0 || therapyPlan.unmatchedCount);
+    if (!hasPlan) return null;
+
     const wrap = el("div", { class: "assistant-popup" });
     wrap.appendChild(
       el("button", {
@@ -784,7 +805,59 @@
       })
     );
     wrap.appendChild(el("img", { class: "assistant-avatar", src: LOGO_DATAURL, alt: "Yushin" }));
-    wrap.appendChild(el("div", { class: "assistant-speech", text }));
+
+    const thread = el("div", { class: "assistant-thread" });
+
+    if (!assistantConversationOpen) {
+      // Eerste bericht: enkel een vraag + keuzemenu, geen inhoud.
+      thread.appendChild(el("div", { class: "assistant-speech", text: ui("assistantAskShowPlan") }));
+      const menu = el("div", { class: "assistant-menu" });
+      menu.appendChild(
+        el("button", {
+          class: "assistant-menu-btn",
+          type: "button",
+          text: ui("assistantShowPlanBtn"),
+          onclick: () => {
+            assistantConversationOpen = true;
+            render();
+          },
+        })
+      );
+      menu.appendChild(
+        el("button", {
+          class: "assistant-menu-btn assistant-menu-btn-secondary",
+          type: "button",
+          text: ui("assistantDismissBtn"),
+          onclick: () => {
+            assistantPopupDismissed = true;
+            render();
+          },
+        })
+      );
+      thread.appendChild(menu);
+    } else {
+      // Gesprek geopend: therapieplan alsnog tonen, maar als losse
+      // chatberichten in het gespreksdraadje i.p.v. statische kaarten in
+      // de resultatentekst (dat was de taak #88/#89-aanpak).
+      thread.appendChild(el("div", { class: "assistant-speech", text: ui("assistantSpeechIntro") }));
+      therapyPlan.matched.forEach((m) => {
+        const parts = [el("strong", { text: m.pattern })];
+        if (m.mei_zin) parts.push(el("p", { text: m.mei_zin }));
+        if (m.punten) parts.push(el("p", { text: `${t("therapyPlanPoints")}: ${m.punten}` }));
+        if (m.leefstijl) parts.push(el("p", { text: `${t("therapyPlanLifestyle")}: ${m.leefstijl}` }));
+        thread.appendChild(el("div", { class: "assistant-speech" }, parts));
+      });
+      if (therapyPlan.unmatchedCount) {
+        thread.appendChild(
+          el("div", {
+            class: "assistant-speech assistant-speech-muted",
+            text: t("therapyPlanUnmatched")(therapyPlan.unmatchedCount),
+          })
+        );
+      }
+    }
+
+    wrap.appendChild(thread);
     return wrap;
   }
 
@@ -888,6 +961,7 @@
       resultData = data.result;
       resultSessionId = data.sessionId;
       assistantPopupDismissed = false;
+      assistantConversationOpen = false;
       screen = "results";
       render();
     } catch (err) {
@@ -955,26 +1029,13 @@
     }
 
     if (resultData.therapyPlan) {
-      const tp = el("div", { class: "therapy-plan" });
-      tp.appendChild(el("h3", { text: t("therapyPlanTitle") }));
-      resultData.therapyPlan.matched.forEach((m) => {
-        const card = el("div", { class: "therapy-plan-card" });
-        card.appendChild(el("h4", { text: m.pattern }));
-        if (m.mei_zin) card.appendChild(el("p", { text: m.mei_zin }));
-        if (m.punten) card.appendChild(el("p", { text: `${t("therapyPlanPoints")}: ${m.punten}` }));
-        if (m.leefstijl) card.appendChild(el("p", { text: `${t("therapyPlanLifestyle")}: ${m.leefstijl}` }));
-        tp.appendChild(card);
-      });
-      if (resultData.therapyPlan.unmatchedCount) {
-        tp.appendChild(el("p", { class: "muted", text: t("therapyPlanUnmatched")(resultData.therapyPlan.unmatchedCount) }));
-      }
-      wrap.appendChild(tp);
-
-      // Yushin-assistent die het therapieplan "presenteert" (taak #89) —
-      // bewust LOS van de tp-tekstflow gehouden (i.t.t. taak #88) en als
-      // zwevende pop-up toegevoegd; .assistant-popup staat op
-      // position:fixed dus het maakt niet uit waar in de DOM dit hangt.
-      const bubble = renderAssistantBubble(ui("assistantSpeechIntro"));
+      // Therapieplan-voorstel (taak #91) — verschijnt bewust NIET meer
+      // standaard in de resultatentekst. De Yushin-assistent-pop-up stelt
+      // eerst een keuzemenu voor; enkel als de therapeut expliciet "Ja,
+      // toon het voorstel" kiest, verschijnt de inhoud alsnog — dan als
+      // losse chatberichten in de pop-up, in de stijl van een doorlopend
+      // WhatsApp-gesprek. Zie renderAssistantPopup hieronder.
+      const bubble = renderAssistantPopup(resultData.therapyPlan);
       if (bubble) wrap.appendChild(bubble);
     }
 
