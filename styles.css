@@ -256,6 +256,40 @@ p { line-height: 1.5; }
   border-top: 8px solid transparent;
   border-right: 8px solid var(--good);
 }
+/* Gespreksdraadje in de assistent-pop-up (taak #91) — het therapieplan
+   verschijnt niet meer als vaste tekst in de resultaten, maar als losse
+   chatberichten die pas na een expliciete keuze van de therapeut opengaan
+   (zie renderAssistantPopup in app.js). Enkel het laatste bericht in de
+   thread krijgt het bubbel-"staartje", net als in echte chat-apps. */
+.assistant-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.assistant-thread .assistant-speech::after { display: none; }
+.assistant-thread .assistant-speech:last-child::after { display: block; }
+.assistant-speech strong { display: block; margin-bottom: 2px; }
+.assistant-speech p { margin: 4px 0 0; line-height: 1.35; }
+.assistant-speech-muted { opacity: 0.85; font-style: italic; }
+/* Keuzemenu ("Ja, toon het voorstel" / "Nee, bedankt") — verschijnt als
+   losse chip-knoppen onder de vraag van de assistent, vergelijkbaar met
+   quick-reply-knoppen in chatapps. */
+.assistant-menu { display: flex; flex-direction: column; gap: 6px; }
+.assistant-menu-btn {
+  background: var(--card);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 14px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+.assistant-menu-btn:hover { background: var(--accent); color: #1E2A24; }
+.assistant-menu-btn-secondary { border-color: var(--border); color: var(--muted); }
+.assistant-menu-btn-secondary:hover { background: var(--accent-light); color: var(--ink); }
 .assistant-popup-close {
   position: absolute;
   top: -8px;
@@ -279,4 +313,5 @@ p { line-height: 1.5; }
 @media (max-width: 640px) {
   .card { padding: 16px; }
   .assistant-popup { right: 12px; bottom: 12px; max-width: calc(100vw - 24px); }
+  .assistant-thread { max-height: 280px; }
 }
