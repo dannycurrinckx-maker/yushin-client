@@ -59,6 +59,15 @@
   // telkens een nieuw resultaat binnenkomt (zie fetchResult hieronder).
   let assistantPopupDismissed = false;
 
+  // Automatische demo-invulling (taak #90) — herbouwde, SaaS-versie van
+  // autoFillDemo() uit de oude client-side tool. autoDemoBusy voorkomt
+  // dubbele runs; autoDemoActive blijft aan tot een ECHTE nieuwe sessie
+  // start (zie startInterview) en beperkt dan het resultaatscherm tot 5
+  // bevindingen (zie renderResults) zodat een prospect snel een indruk
+  // krijgt zonder de volle 78-vragen-uitkomst te moeten doorworstelen.
+  let autoDemoBusy = false;
+  let autoDemoActive = false;
+
   // Verborgen demo-toegang op het landingsscherm (taak #87) — een
   // ingeklapt "Demo-toegang?"-linkje dat een codeveld toont; bij de juiste
   // code (zie DEMO_ACCESS_CODE verderop) logt dit meteen in op het
@@ -147,6 +156,10 @@
       demoCodeButton: "Ga",
       demoCodeInvalid: "Ongeldige code.",
       assistantSpeechIntro: "Op basis van dit patroon stel ik onderstaand therapieplan voor:",
+      autoDemoBtn: "🧪 Demo: automatisch invullen",
+      autoDemoConfirm:
+        "Dit vult de vragenlijst automatisch in met telkens de eerste antwoordoptie, enkel om snel een indruk te geven van de app. Gebruik dit nooit tijdens een echt consult — de resultaten zijn nep. Doorgaan?",
+      autoDemoCapped: (shown, total) => `Demo: toont de eerste ${shown} van de ${total} gevonden bevindingen.`,
     },
     en: {
       appTitle: "Yushin",
@@ -202,6 +215,10 @@
       demoCodeButton: "Go",
       demoCodeInvalid: "Invalid code.",
       assistantSpeechIntro: "Based on this pattern, here is my proposed treatment plan:",
+      autoDemoBtn: "🧪 Demo: auto-fill",
+      autoDemoConfirm:
+        "This automatically fills in the questionnaire by always picking the first answer option, just to quickly show what the app can do. Never use this during a real consultation — the results are fake. Continue?",
+      autoDemoCapped: (shown, total) => `Demo: showing the first ${shown} of ${total} findings.`,
     },
   };
   function ui(key) {
@@ -343,6 +360,21 @@
               screen = "admin";
               fetchAdminUsers();
             },
+          })
+        );
+      }
+
+      // Automatische demo-invulknop (taak #90) — bewust enkel zichtbaar op
+      // het demo-account (isDemoAccount hieronder) en enkel op de schermen
+      // waar een interview aan de gang kan zijn; een echte praktijk mag dit
+      // testhulpmiddel nooit tijdens een echt consult te zien krijgen.
+      if (isDemoAccount() && (screen === "intro" || screen === "interview")) {
+        bar.appendChild(
+          el("button", {
+            class: "btn btn-ghost btn-demo-autofill",
+            text: autoDemoBusy ? ui("loading") : ui("autoDemoBtn"),
+            disabled: autoDemoBusy ? "disabled" : undefined,
+            onclick: handleAutoDemoClick,
           })
         );
       }
@@ -762,6 +794,9 @@
     answers = {};
     currentQuestion = null;
     flowError = "";
+    // Een ECHTE nieuwe sessie herstelt altijd de volledige resultaatweergave
+    // (i.t.t. handleAutoDemoClick hieronder, dat dit bewust op true zet).
+    autoDemoActive = false;
     screen = "interview";
     fetchNext();
   }
@@ -873,7 +908,13 @@
       wrap.appendChild(el("p", { class: "conclusion", text: t("allDone") }));
 
       const maxCount = resultData.patterns[0].count || 1;
-      resultData.patterns.forEach((p, idx) => {
+      // Demo-cap (taak #90): tijdens de automatische demo-invulling tonen
+      // we bewust maximaal 5 bevindingen — genoeg om een prospect snel een
+      // indruk te geven van wat de app doet, zonder de volle, mogelijk
+      // langere lijst te moeten doorscrollen. Bij een echte sessie
+      // (autoDemoActive === false) blijft dit gewoon de volledige lijst.
+      const patternsToShow = autoDemoActive ? resultData.patterns.slice(0, 5) : resultData.patterns;
+      patternsToShow.forEach((p, idx) => {
         const card = el("div", { class: "result-card" + (idx === 0 ? " rank1" : "") });
         card.appendChild(
           el("h3", { text: `${p.pattern} — ${t(GROUP_KEY[p.group])} (${p.count}×)` })
@@ -893,6 +934,12 @@
         }
         wrap.appendChild(card);
       });
+
+      if (autoDemoActive && resultData.patterns.length > patternsToShow.length) {
+        wrap.appendChild(
+          el("p", { class: "muted", text: ui("autoDemoCapped")(patternsToShow.length, resultData.patterns.length) })
+        );
+      }
 
       wrap.appendChild(
         el("p", { class: "conclusion", text: t("conclusion")(resultData.topPattern, resultData.secondPattern) })
@@ -948,6 +995,56 @@
     );
 
     return wrap;
+  }
+
+  // --- Automatische demo-invulling (taak #90) --------------------------------
+  // Herbouwde SaaS-versie van autoFillDemo() uit de oude client-side tool
+  // (tcm_10plus2_chatbot.html): klikt telkens de eerste antwoordoptie aan
+  // tot het resultaatscherm bereikt is, zodat een prospect in een paar
+  // seconden een indruk krijgt van de app zonder de vragenlijst manueel te
+  // moeten doorlopen. Bewust enkel zichtbaar/bruikbaar op het demo-account
+  // (isDemoAccount) — nooit voor een echte praktijk tijdens een echt
+  // consult (zie ook de confirm()-waarschuwing in handleAutoDemoClick).
+
+  function isDemoAccount() {
+    return !!(currentUser && currentUser.email === DEMO_CREDENTIALS.email);
+  }
+
+  async function handleAutoDemoClick() {
+    if (autoDemoBusy) return;
+    if (!confirm(ui("autoDemoConfirm"))) return;
+
+    autoDemoBusy = true;
+    autoDemoActive = true;
+
+    // Vanaf een intro-stap (taal/rol/geslacht/pediatrisch/label) kiezen we
+    // vaste, neutrale standaardwaarden (therapeut-rol, volwassene) en
+    // starten meteen de interview — zo werkt de knop ook al vóór de eerste
+    // echte vraag, net als in de oude tool. We hergebruiken startInterview()
+    // hier bewust NIET, omdat die autoDemoActive terug op false zet.
+    if (screen !== "interview") {
+      context.role = context.role || "therapeut";
+      context.female = context.female === null ? false : context.female;
+      context.pediatric = context.pediatric === null ? false : context.pediatric;
+      patientLabelInput = patientLabelInput || "DEMO";
+      answers = {};
+      currentQuestion = null;
+      flowError = "";
+      screen = "interview";
+      render();
+      await fetchNext();
+    } else {
+      render();
+    }
+
+    let guard = 0;
+    while (screen === "interview" && currentQuestion && guard++ < 200) {
+      const opt = currentQuestion.question.options[0];
+      await chooseOption(opt.index);
+    }
+
+    autoDemoBusy = false;
+    render();
   }
 
   // --- Scherm: beheerpaneel (taak #73) --------------------------------------
