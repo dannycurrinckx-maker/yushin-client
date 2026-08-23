@@ -53,6 +53,11 @@
   let resultData = null;
   let resultSessionId = null;
   let patientLabelInput = "";
+  // Sluitstatus van de Yushin-assistent-pop-up (taak #89) — apart van
+  // resultData zodat een klik op het sluitkruisje niet het hele
+  // resultaatscherm laat herrenderen zonder de pop-up. Wordt gereset
+  // telkens een nieuw resultaat binnenkomt (zie fetchResult hieronder).
+  let assistantPopupDismissed = false;
 
   // Verborgen demo-toegang op het landingsscherm (taak #87) — een
   // ingeklapt "Demo-toegang?"-linkje dat een codeveld toont; bij de juiste
@@ -726,12 +731,26 @@
     return el("button", { class: "opt-btn", text: label, onclick: onClick });
   }
 
-  // Kleine Yushin-avatar met spreekbubbel (taak #88) — het visuele restje van
-  // wat vroeger Mei was: hier verschijnt enkel het logo naast een korte
-  // introzin, gebruikt om het therapieplan te "presenteren" op het
-  // resultaatscherm (zie renderResults hieronder).
+  // Yushin-assistent als losstaande chatbubbel-pop-up (taak #89) — op
+  // verzoek van Danny losgekoppeld van de tekst van het therapieplan en
+  // getoond als een zwevend berichtvenster rechtsonder in beeld
+  // (vergelijkbaar met een WhatsApp-bericht), met een sluitkruisje.
+  // Vervangt de inline-variant boven het therapieplan uit taak #88.
   function renderAssistantBubble(text) {
-    const wrap = el("div", { class: "assistant-bubble" });
+    if (assistantPopupDismissed) return null;
+    const wrap = el("div", { class: "assistant-popup" });
+    wrap.appendChild(
+      el("button", {
+        class: "assistant-popup-close",
+        type: "button",
+        "aria-label": "close",
+        text: "×",
+        onclick: () => {
+          assistantPopupDismissed = true;
+          render();
+        },
+      })
+    );
     wrap.appendChild(el("img", { class: "assistant-avatar", src: LOGO_DATAURL, alt: "Yushin" }));
     wrap.appendChild(el("div", { class: "assistant-speech", text }));
     return wrap;
@@ -833,6 +852,7 @@
       });
       resultData = data.result;
       resultSessionId = data.sessionId;
+      assistantPopupDismissed = false;
       screen = "results";
       render();
     } catch (err) {
@@ -889,14 +909,6 @@
 
     if (resultData.therapyPlan) {
       const tp = el("div", { class: "therapy-plan" });
-      // Yushin-assistent die het therapieplan "presenteert" (taak #88) — dit
-      // was vroeger Mei's spreekbubbel na de conclusie (taak #56-60), maar
-      // ging bij de herbouw naar de SaaS-client (taak #72) verloren omdat
-      // spraak/animatie toen bewust buiten scope viel. Danny gaf aan dit
-      // gemist te hebben; dit brengt enkel het VISUELE avatar+spreekbubbel-
-      // stukje terug (geen audio/animatie), rechtstreeks boven het
-      // therapieplan zodat het duidelijk is dat Yushin dit voorstelt.
-      tp.appendChild(renderAssistantBubble(ui("assistantSpeechIntro")));
       tp.appendChild(el("h3", { text: t("therapyPlanTitle") }));
       resultData.therapyPlan.matched.forEach((m) => {
         const card = el("div", { class: "therapy-plan-card" });
@@ -910,6 +922,13 @@
         tp.appendChild(el("p", { class: "muted", text: t("therapyPlanUnmatched")(resultData.therapyPlan.unmatchedCount) }));
       }
       wrap.appendChild(tp);
+
+      // Yushin-assistent die het therapieplan "presenteert" (taak #89) —
+      // bewust LOS van de tp-tekstflow gehouden (i.t.t. taak #88) en als
+      // zwevende pop-up toegevoegd; .assistant-popup staat op
+      // position:fixed dus het maakt niet uit waar in de DOM dit hangt.
+      const bubble = renderAssistantBubble(ui("assistantSpeechIntro"));
+      if (bubble) wrap.appendChild(bubble);
     }
 
     wrap.appendChild(
