@@ -67,6 +67,18 @@
   // opengaat. Wordt samen met assistantPopupDismissed gereset bij elk
   // nieuw resultaat (zie fetchResult).
   let assistantConversationOpen = false;
+  // Welke patroon-titels de therapeut al heeft aangeklikt in de assistent-
+  // pop-up (taak #92) — het keuzemenu toont bewust enkel de titels van de
+  // gevonden patronen; de volledige inhoud (mei_zin/punten/leefstijl) van
+  // een patroon verschijnt pas als losse chatbubbel nadat de therapeut
+  // expliciet op die titel klikt, i.p.v. alles in één keer te tonen zodra
+  // "Ja, toon het voorstel" gekozen is. Bevat indices in
+  // therapyPlan.matched; de "overige bevindingen"-notitie wordt apart
+  // bijgehouden via assistantUnmatchedOpened. Wordt samen met de andere
+  // assistant*-variabelen gereset bij elk nieuw resultaat (zie
+  // fetchResult).
+  let assistantOpenedPatterns = [];
+  let assistantUnmatchedOpened = false;
 
   // Automatische demo-invulling (taak #90) — herbouwde, SaaS-versie van
   // autoFillDemo() uit de oude client-side tool. autoDemoBusy voorkomt
@@ -164,10 +176,11 @@
       demoCodeLabel: "Admin-code",
       demoCodeButton: "Ga",
       demoCodeInvalid: "Ongeldige code.",
-      assistantSpeechIntro: "Op basis van dit patroon stel ik onderstaand therapieplan voor:",
       assistantAskShowPlan: "Wil je dat ik een vrijblijvend therapieplan-voorstel toon voor dit patroon?",
       assistantShowPlanBtn: "Ja, toon het voorstel",
       assistantDismissBtn: "Nee, bedankt",
+      assistantChooseTitle: "Kies een patroon om het voorstel te zien:",
+      assistantUnmatchedTitle: "Overige bevindingen",
       autoDemoBtn: "🧪 Demo: automatisch invullen",
       autoDemoConfirm:
         "Dit vult de vragenlijst automatisch in met telkens de eerste antwoordoptie, enkel om snel een indruk te geven van de app. Gebruik dit nooit tijdens een echt consult — de resultaten zijn nep. Doorgaan?",
@@ -226,10 +239,11 @@
       demoCodeLabel: "Admin code",
       demoCodeButton: "Go",
       demoCodeInvalid: "Invalid code.",
-      assistantSpeechIntro: "Based on this pattern, here is my proposed treatment plan:",
       assistantAskShowPlan: "Would you like me to show a proposed treatment plan for this pattern?",
       assistantShowPlanBtn: "Yes, show the proposal",
       assistantDismissBtn: "No, thanks",
+      assistantChooseTitle: "Choose a pattern to see the proposal:",
+      assistantUnmatchedTitle: "Other findings",
       autoDemoBtn: "🧪 Demo: auto-fill",
       autoDemoConfirm:
         "This automatically fills in the questionnaire by always picking the first answer option, just to quickly show what the app can do. Never use this during a real consultation — the results are fake. Continue?",
@@ -836,24 +850,57 @@
       );
       thread.appendChild(menu);
     } else {
-      // Gesprek geopend: therapieplan alsnog tonen, maar als losse
-      // chatberichten in het gespreksdraadje i.p.v. statische kaarten in
-      // de resultatentekst (dat was de taak #88/#89-aanpak).
-      thread.appendChild(el("div", { class: "assistant-speech", text: ui("assistantSpeechIntro") }));
-      therapyPlan.matched.forEach((m) => {
+      // Gesprek geopend (taak #91), maar toont bewust NIET meteen alle
+      // inhoud (taak #92): eerst enkel de patroon-titels als keuzemenu.
+      // Reeds aangeklikte titels blijven als losse chatbubbel staan (in de
+      // volgorde waarin ze geopend zijn), zodat de thread aanvoelt als een
+      // doorlopend gesprek; het menu met de resterende titels staat
+      // steeds onderaan, als eerstvolgende actie — net als quick-reply-
+      // knoppen in een chatapp.
+      thread.appendChild(el("div", { class: "assistant-speech", text: ui("assistantChooseTitle") }));
+
+      assistantOpenedPatterns.forEach((idx) => {
+        const m = therapyPlan.matched[idx];
+        if (!m) return;
         const parts = [el("strong", { text: m.pattern })];
         if (m.mei_zin) parts.push(el("p", { text: m.mei_zin }));
         if (m.punten) parts.push(el("p", { text: `${t("therapyPlanPoints")}: ${m.punten}` }));
         if (m.leefstijl) parts.push(el("p", { text: `${t("therapyPlanLifestyle")}: ${m.leefstijl}` }));
         thread.appendChild(el("div", { class: "assistant-speech" }, parts));
       });
-      if (therapyPlan.unmatchedCount) {
+      if (assistantUnmatchedOpened && therapyPlan.unmatchedCount) {
         thread.appendChild(
           el("div", {
             class: "assistant-speech assistant-speech-muted",
             text: t("therapyPlanUnmatched")(therapyPlan.unmatchedCount),
           })
         );
+      }
+
+      const pendingTitles = [];
+      therapyPlan.matched.forEach((m, idx) => {
+        if (!assistantOpenedPatterns.includes(idx)) pendingTitles.push({ key: idx, label: m.pattern });
+      });
+      if (therapyPlan.unmatchedCount && !assistantUnmatchedOpened) {
+        pendingTitles.push({ key: "unmatched", label: ui("assistantUnmatchedTitle") });
+      }
+      if (pendingTitles.length) {
+        const menu = el("div", { class: "assistant-menu" });
+        pendingTitles.forEach(({ key, label }) => {
+          menu.appendChild(
+            el("button", {
+              class: "assistant-menu-btn",
+              type: "button",
+              text: label,
+              onclick: () => {
+                if (key === "unmatched") assistantUnmatchedOpened = true;
+                else assistantOpenedPatterns = [...assistantOpenedPatterns, key];
+                render();
+              },
+            })
+          );
+        });
+        thread.appendChild(menu);
       }
     }
 
@@ -962,6 +1009,8 @@
       resultSessionId = data.sessionId;
       assistantPopupDismissed = false;
       assistantConversationOpen = false;
+      assistantOpenedPatterns = [];
+      assistantUnmatchedOpened = false;
       screen = "results";
       render();
     } catch (err) {
