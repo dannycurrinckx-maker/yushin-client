@@ -54,6 +54,16 @@
   let resultSessionId = null;
   let patientLabelInput = "";
 
+  // Verborgen demo-toegang op het landingsscherm (taak #87) — een
+  // ingeklapt "Demo-toegang?"-linkje dat een codeveld toont; bij de juiste
+  // code (zie DEMO_ACCESS_CODE verderop) logt dit meteen in op het
+  // demo-praktijkaccount, net als de ?demo=1 querystring-shortcut. Bedoeld
+  // voor Danny om tijdens een live demo snel toegang te tonen zonder de
+  // link met ?demo=1 te moeten kennen/typen.
+  let showDemoCodeInput = false;
+  let demoCodeValue = "";
+  let demoCodeError = "";
+
   // Beheerpaneel (taak #73) — enkel bereikbaar/zinvol voor role === "owner";
   // de server dwingt dit ook zelf af (auth: "owner" in src/index.js), dit is
   // enkel UI-gemak.
@@ -127,6 +137,10 @@
         "Je praktijk is aangemaakt en klaar voor gebruik. Je kan meteen aan de slag met een eerste anamnese, of eerst collega's uitnodigen via het beheerpaneel.",
       onboardingGoTeam: "Ga naar Team beheren",
       onboardingGoIntake: "Start je eerste anamnese",
+      demoCodeToggle: "Demo-toegang?",
+      demoCodeLabel: "Admin-code",
+      demoCodeButton: "Ga",
+      demoCodeInvalid: "Ongeldige code.",
     },
     en: {
       appTitle: "Yushin",
@@ -177,6 +191,10 @@
         "Your practice has been created and is ready to use. You can start a first intake right away, or invite colleagues first via the admin panel.",
       onboardingGoTeam: "Go to Manage team",
       onboardingGoIntake: "Start your first intake",
+      demoCodeToggle: "Demo access?",
+      demoCodeLabel: "Admin code",
+      demoCodeButton: "Go",
+      demoCodeInvalid: "Invalid code.",
     },
   };
   function ui(key) {
@@ -407,6 +425,7 @@
     );
 
     outer.appendChild(wrap);
+    outer.appendChild(renderDemoCodeBlock());
     return outer;
 
     function field(name, labelText, type) {
@@ -414,6 +433,60 @@
         el("label", { text: labelText }),
         el("input", { name, type, required: "required" }),
       ]);
+    }
+  }
+
+  // Verborgen demo-toegang (taak #87) — ingeklapt onder het inlog-/
+  // registratieblok, bewust NIET prominent (dit is geen feature voor gewone
+  // bezoekers, enkel een snelkoppeling voor Danny tijdens een live demo).
+  // Zelfde bestemming als de ?demo=1 querystring-shortcut (taak #83).
+  function renderDemoCodeBlock() {
+    const block = el("div", { class: "demo-code-block" });
+
+    if (!showDemoCodeInput) {
+      block.appendChild(
+        el("button", {
+          class: "btn-link demo-code-toggle",
+          type: "button",
+          text: ui("demoCodeToggle"),
+          onclick: () => {
+            showDemoCodeInput = true;
+            render();
+          },
+        })
+      );
+      return block;
+    }
+
+    const form = el("form", {
+      class: "demo-code-form",
+      onsubmit: (e) => {
+        e.preventDefault();
+        submitDemoCode();
+      },
+    });
+    form.appendChild(
+      el("input", {
+        type: "password",
+        placeholder: ui("demoCodeLabel"),
+        value: demoCodeValue,
+        autofocus: "autofocus",
+        oninput: (e) => (demoCodeValue = e.target.value),
+      })
+    );
+    form.appendChild(el("button", { class: "btn btn-ghost", type: "submit", text: ui("demoCodeButton") }));
+    block.appendChild(form);
+    if (demoCodeError) block.appendChild(el("div", { class: "error", text: demoCodeError }));
+    return block;
+  }
+
+  function submitDemoCode() {
+    if (demoCodeValue.trim() === DEMO_ACCESS_CODE) {
+      demoCodeError = "";
+      tryDemoAutoLogin();
+    } else {
+      demoCodeError = ui("demoCodeInvalid");
+      render();
     }
   }
 
@@ -980,6 +1053,12 @@
   // (publieke) broncode van deze client, dat is voor een demo-only account
   // aanvaardbaar maar zou dat niet zijn voor een echt praktijkaccount.
   const DEMO_CREDENTIALS = { email: "demo@yushin-demo.app", password: "YushinDemo2026!" };
+  // Code voor het verborgen "Demo-toegang?"-veld op het landingsscherm
+  // (renderDemoCodeBlock/submitDemoCode hierboven, taak #87) — bewust apart
+  // van DEMO_CREDENTIALS: dit is geen wachtwoord voor het demo-account zelf,
+  // enkel een korte, makkelijk te onthouden/deel-bare toegangscode voor
+  // tijdens een live demo.
+  const DEMO_ACCESS_CODE = "yushin2026";
 
   async function tryDemoAutoLogin() {
     authBusy = true;
