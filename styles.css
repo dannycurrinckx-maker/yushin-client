@@ -185,6 +185,30 @@ p { line-height: 1.5; }
   line-height: 1.6;
 }
 
+/* Verborgen demo-toegang (taak #87) — bewust klein en onopvallend, niet
+   bedoeld als prominente call-to-action voor gewone bezoekers. */
+.demo-code-block { margin-top: 16px; text-align: center; }
+.demo-code-toggle {
+  background: none;
+  border: none;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.demo-code-form { display: flex; gap: 8px; justify-content: center; align-items: center; }
+.demo-code-form input {
+  width: 140px;
+  background: var(--accent-light);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.demo-code-block .error { margin: 8px 0 0; text-align: left; max-width: 260px; margin-left: auto; margin-right: auto; }
+
 @media (max-width: 640px) {
   .card { padding: 16px; }
 }
