@@ -1025,6 +1025,13 @@
     wrap.appendChild(el("h2", { text: t("reportTitle") }));
     wrap.appendChild(el("div", { class: "muted", text: `${resultData.generatedAt.slice(0, 10)} · ${resultSessionId}` }));
 
+    // Welke patronen effectief als kaart in het rapport verschijnen — bv.
+    // begrensd tot 5 tijdens de demo-cap (taak #90). Buiten het if/else
+    // gedeclareerd zodat het therapieplan-blok hieronder er ook bij kan: de
+    // Yushin-assistent mag NOOIT een voorstel aanbieden voor een patroon dat
+    // de therapeut hier niet ook effectief ziet staan.
+    let patternsToShow = resultData.patterns;
+
     if (!resultData.patterns.length) {
       wrap.appendChild(el("p", { text: t("noPatterns") }));
     } else {
@@ -1036,7 +1043,7 @@
       // indruk te geven van wat de app doet, zonder de volle, mogelijk
       // langere lijst te moeten doorscrollen. Bij een echte sessie
       // (autoDemoActive === false) blijft dit gewoon de volledige lijst.
-      const patternsToShow = autoDemoActive ? resultData.patterns.slice(0, 5) : resultData.patterns;
+      patternsToShow = autoDemoActive ? resultData.patterns.slice(0, 5) : resultData.patterns;
       patternsToShow.forEach((p, idx) => {
         const card = el("div", { class: "result-card" + (idx === 0 ? " rank1" : "") });
         card.appendChild(
@@ -1084,7 +1091,28 @@
       // toon het voorstel" kiest, verschijnt de inhoud alsnog — dan als
       // losse chatberichten in de pop-up, in de stijl van een doorlopend
       // WhatsApp-gesprek. Zie renderAssistantPopup hieronder.
-      const bubble = renderAssistantPopup(resultData.therapyPlan);
+      //
+      // Bugfix (naar aanleiding van Danny's feedback): de assistent mag
+      // ENKEL voorstellen aanbieden voor patronen die ook echt in het
+      // rapport hierboven te zien zijn. resultData.therapyPlan komt van de
+      // server en is intussen al beperkt tot dezelfde top-8 als
+      // resultData.patterns (zie flow.js), maar hier filteren we bovendien
+      // nog eens op patternsToShow — nodig voor de demo-cap (taak #90),
+      // waar het rapport tot 5 kaarten wordt afgekapt terwijl de server tot
+      // 8 patronen meestuurt. Zonder deze filter zou de assistent tijdens
+      // een demo een titel kunnen tonen voor een patroon dat helemaal niet
+      // zichtbaar is in het (afgekapte) rapport.
+      const shownPatternNames = new Set(patternsToShow.map((p) => p.pattern));
+      const isReportTruncated = patternsToShow.length < resultData.patterns.length;
+      const visibleTherapyPlan = {
+        matched: resultData.therapyPlan.matched.filter((m) => shownPatternNames.has(m.pattern)),
+        // De "overige bevindingen"-samenvatting (unmatchedCount) is enkel
+        // betrouwbaar toe te schrijven aan patronen die de therapeut ook
+        // effectief ziet — bij een afgekapt rapport laten we die daarom
+        // weg i.p.v. te gokken of ze binnen of buiten beeld vallen.
+        unmatchedCount: isReportTruncated ? 0 : resultData.therapyPlan.unmatchedCount,
+      };
+      const bubble = renderAssistantPopup(visibleTherapyPlan);
       if (bubble) wrap.appendChild(bubble);
     }
 
