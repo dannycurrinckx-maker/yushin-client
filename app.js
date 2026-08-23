@@ -141,6 +141,7 @@
       demoCodeLabel: "Admin-code",
       demoCodeButton: "Ga",
       demoCodeInvalid: "Ongeldige code.",
+      assistantSpeechIntro: "Op basis van dit patroon stel ik onderstaand therapieplan voor:",
     },
     en: {
       appTitle: "Yushin",
@@ -195,6 +196,7 @@
       demoCodeLabel: "Admin code",
       demoCodeButton: "Go",
       demoCodeInvalid: "Invalid code.",
+      assistantSpeechIntro: "Based on this pattern, here is my proposed treatment plan:",
     },
   };
   function ui(key) {
@@ -724,6 +726,17 @@
     return el("button", { class: "opt-btn", text: label, onclick: onClick });
   }
 
+  // Kleine Yushin-avatar met spreekbubbel (taak #88) — het visuele restje van
+  // wat vroeger Mei was: hier verschijnt enkel het logo naast een korte
+  // introzin, gebruikt om het therapieplan te "presenteren" op het
+  // resultaatscherm (zie renderResults hieronder).
+  function renderAssistantBubble(text) {
+    const wrap = el("div", { class: "assistant-bubble" });
+    wrap.appendChild(el("img", { class: "assistant-avatar", src: LOGO_DATAURL, alt: "Yushin" }));
+    wrap.appendChild(el("div", { class: "assistant-speech", text }));
+    return wrap;
+  }
+
   // --- Scherm: interview ----------------------------------------------------
 
   function startInterview() {
@@ -876,6 +889,14 @@
 
     if (resultData.therapyPlan) {
       const tp = el("div", { class: "therapy-plan" });
+      // Yushin-assistent die het therapieplan "presenteert" (taak #88) — dit
+      // was vroeger Mei's spreekbubbel na de conclusie (taak #56-60), maar
+      // ging bij de herbouw naar de SaaS-client (taak #72) verloren omdat
+      // spraak/animatie toen bewust buiten scope viel. Danny gaf aan dit
+      // gemist te hebben; dit brengt enkel het VISUELE avatar+spreekbubbel-
+      // stukje terug (geen audio/animatie), rechtstreeks boven het
+      // therapieplan zodat het duidelijk is dat Yushin dit voorstelt.
+      tp.appendChild(renderAssistantBubble(ui("assistantSpeechIntro")));
       tp.appendChild(el("h3", { text: t("therapyPlanTitle") }));
       resultData.therapyPlan.matched.forEach((m) => {
         const card = el("div", { class: "therapy-plan-card" });
