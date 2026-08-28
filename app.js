@@ -25,7 +25,7 @@
   // (tcm_10plus2_chatbot.html, MEI_AVATAR_DATAURL, taak #64-rebrand). Bewust
   // als data-URL ingebed i.p.v. apart bestand: GitHubs webeditor/upload-flow
   // in deze sessie ondersteunt geen losse binaire bestanden, enkel tekst.
-  const LOGO_DATAURL = "data:image/webp;base64,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";
+  const LOGO_DATAURL = "data:image/webp;base64,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";
 
   const API_BASE_KEY = "yushin_api_base";
   const TOKEN_KEY = "yushin_token";
@@ -147,6 +147,25 @@
   // hangt hiervan af (zie PLAN_CATALOG hieronder).
   let billingInterval = "monthly";
 
+  // Betaalpoort / toegangscode (taak #118) — VERVANGT de eerdere automatische
+  // proefperiode. Zolang orgInfo.subscriptionStatus === "trialing" heeft de
+  // organisatie GEEN toegang: render() toont dan (zie isAccessBlocked()
+  // hieronder) altijd renderGate() (eigenaar) of renderLocked() (overig
+  // teamlid) in plaats van het scherm dat `screen` eigenlijk aangeeft — dit is
+  // de daadwerkelijke poort, niet enkel een badge zoals voorheen. De server
+  // blijft hoe dan ook de echte grens (flow.js/accessCodes.js): dit is enkel
+  // de UI-routering.
+  let gateCodeValue = "";
+  let gateBusy = false;
+  let gateError = "";
+
+  // Gedeelde poort-check — gebruikt in zowel render() (welk scherm getoond
+  // wordt) als renderTopBar() (welke navigatieknoppen zinvol zijn terwijl de
+  // poort actief is).
+  function isAccessBlocked() {
+    return Boolean(token && currentUser && orgInfo && orgInfo.subscriptionStatus === "trialing");
+  }
+
   // Kleine, eigen UI-stringtabel voor de NIEUWE schermen (login/registreren)
   // die in de oorspronkelijke client-side tool niet bestonden (die had geen
   // authenticatie nodig). Alle overige teksten (vragen, resultaten,
@@ -255,6 +274,21 @@
       planTeamDesc: "Voor een praktijk met een team. Onbeperkt aantal patroonverkenningen, tot 3 gebruikers.",
       billingEducationNote:
         "Ben je student, opleider of net afgestudeerd? Voor het Education-tarief nemen we dit nog handmatig op — neem contact op.",
+
+      // Toegangspoort (taak #118) — vervangt de vroegere automatische
+      // proefperiode. Wordt getoond meteen na inloggen/registreren zolang de
+      // organisatie nog geen toegang heeft.
+      gateTitle: "Toegang vereist",
+      gateIntro:
+        "Deze praktijk heeft nog geen toegang tot Yushin. Kies een abonnement, of voer een toegangscode in als je die van ons hebt gekregen.",
+      gateViewPlansBtn: "Bekijk abonnementen",
+      gateOrDivider: "— of —",
+      gateCodeLabel: "Toegangscode",
+      gateCodeButton: "Code inwisselen",
+      gateDiscountApplied: (percent) =>
+        `Kortingscode toegepast: ${percent}% korting wordt automatisch verrekend bij het afrekenen hieronder.`,
+      lockedMessage:
+        "Deze praktijk heeft nog geen toegang tot Yushin. Neem contact op met de praktijkbeheerder om een abonnement te kiezen of een toegangscode in te voeren.",
     },
     en: {
       appTitle: "Yushin",
@@ -344,6 +378,18 @@
       planTeamDesc: "For a practice with a team. Unlimited pattern explorations, up to 3 users.",
       billingEducationNote:
         "Student, educator, or recent graduate? We still handle the Education rate manually — get in touch.",
+
+      gateTitle: "Access required",
+      gateIntro:
+        "This practice doesn't have access to Yushin yet. Choose a subscription, or enter an access code if we gave you one.",
+      gateViewPlansBtn: "View subscriptions",
+      gateOrDivider: "— or —",
+      gateCodeLabel: "Access code",
+      gateCodeButton: "Redeem code",
+      gateDiscountApplied: (percent) =>
+        `Discount code applied: ${percent}% off will be applied automatically at checkout below.`,
+      lockedMessage:
+        "This practice doesn't have access to Yushin yet. Contact your practice owner to choose a subscription or enter an access code.",
     },
   };
   function ui(key) {
@@ -453,7 +499,19 @@
     root.innerHTML = "";
     root.appendChild(renderTopBar());
     let body;
-    if (screen === "auth") body = renderAuth();
+    // Taak #118 — de eigenlijke poort. token/currentUser bestaan al (anders
+    // is screen sowieso "auth"), maar orgInfo kan bij een pagina-herlaad met
+    // een reeds bestaande sessie nog niet geladen zijn (fetchOrganizationInfo
+    // loopt dan nog): toon in dat tussenmoment een neutraal laadscherm i.p.v.
+    // even het echte scherm te laten flitsen. Zodra orgInfo bekend is, geldt:
+    // subscriptionStatus === "trialing" -> GEEN toegang, altijd de poort
+    // tonen — behalve het abonnementsscherm zelf (screen === "billing"),
+    // want dat IS de "betalen"-kant van de poort (zie renderGate() hieronder).
+    if (token && currentUser && orgInfo === null && screen !== "auth") {
+      body = renderGateLoading();
+    } else if (isAccessBlocked() && screen !== "billing") {
+      body = currentUser.role === "owner" ? renderGate() : renderLocked();
+    } else if (screen === "auth") body = renderAuth();
     else if (screen === "onboarding") body = renderOnboarding();
     else if (screen === "intro") body = renderIntro();
     else if (screen === "interview") body = renderInterview();
@@ -637,17 +695,23 @@
             },
           })
         );
-        bar.appendChild(
-          el("button", {
-            class: "btn btn-ghost",
-            text: ui("manageTeam"),
-            onclick: () => {
-              screenBeforeAdmin = screen;
-              screen = "admin";
-              fetchAdminUsers();
-            },
-          })
-        );
+        // Taak #118: "Team beheren" verbergen zolang de poort actief is —
+        // anders leidt de knop nergens heen (render() toont sowieso de poort
+        // opnieuw zolang subscriptionStatus "trialing" is), wat verwarrend
+        // aanvoelt als een dode klik.
+        if (!isAccessBlocked()) {
+          bar.appendChild(
+            el("button", {
+              class: "btn btn-ghost",
+              text: ui("manageTeam"),
+              onclick: () => {
+                screenBeforeAdmin = screen;
+                screen = "admin";
+                fetchAdminUsers();
+              },
+            })
+          );
+        }
       }
 
       // Automatische demo-invulknop (taak #90) — bewust enkel zichtbaar op
@@ -876,10 +940,19 @@
     // Onboarding (taak #74): vlak na een NIEUWE registratie tonen we eerst
     // een welkomstscherm i.p.v. meteen de intro-flow te starten — bij een
     // gewone login gaan bestaande gebruikers wél meteen door, zij hebben dat
-    // scherm al gezien.
+    // scherm al gezien. LET OP (taak #118): dit is enkel de VOORKEUR — als de
+    // organisatie nog geen toegang heeft (subscriptionStatus "trialing"),
+    // overschrijft render() dit sowieso met de poort (renderGate/
+    // renderLocked), ongeacht wat `screen` hier gezet wordt.
     screen = isNewRegistration ? "onboarding" : "intro";
     introStep = "lang";
     context = { role: null, female: null, pediatric: null };
+    // Taak #118: login/registratie geven nu allebei al een volledig
+    // organization-object terug (zie auth.js) — meteen synchroon zetten
+    // i.p.v. te wachten op fetchOrganizationInfo() voorkomt dat de poort
+    // (of, erger, het echte intro-/onboardingscherm) even flitst vóór de
+    // aparte GET /api/organization-aanroep terugkomt.
+    orgInfo = data.organization || null;
     fetchOrganizationInfo();
     render();
   }
@@ -1597,6 +1670,114 @@
     }
   }
 
+  // --- Scherm: toegangspoort (taak #118) ----------------------------------
+  //
+  // Dit is de daadwerkelijke vervanging van de automatische proefperiode: zo
+  // lang orgInfo.subscriptionStatus === "trialing" toont render() (zie
+  // hierboven) ALTIJD dit scherm (eigenaar) of renderLocked() (overig
+  // teamlid) in plaats van het scherm dat de gebruiker eigenlijk wilde
+  // bereiken. De server blijft de echte grens (isTrialLimitReached in
+  // trial.js + de aparte check in accessCodes.js) — dit is enkel de
+  // client-routering, bedoeld om iemand meteen naar de juiste actie te
+  // sturen i.p.v. pas na een mislukte serveraanvraag.
+
+  function renderGateLoading() {
+    return el("div", { class: "card" }, [el("p", { class: "muted", text: ui("loading") })]);
+  }
+
+  // Enkel getoond aan NIET-eigenaars (uitgenodigde teamleden): zij kunnen
+  // zelf niets ontgrendelen — /api/billing/checkout en
+  // /api/access-code/redeem staan in index.js allebei op auth:"owner". Dus
+  // enkel een duidelijke boodschap, geen actie-knoppen.
+  function renderLocked() {
+    const wrap = el("div", { class: "card" });
+    wrap.appendChild(el("h2", { text: ui("gateTitle") }));
+    wrap.appendChild(el("p", { text: ui("lockedMessage") }));
+    return wrap;
+  }
+
+  async function handleRedeemCode() {
+    if (!gateCodeValue.trim()) return;
+    gateBusy = true;
+    gateError = "";
+    render();
+    try {
+      const data = await api("/api/access-code/redeem", "POST", { code: gateCodeValue.trim() });
+      gateCodeValue = "";
+      if (data.kind === "free") {
+        // Meteen ontgrendeld — orgInfo lokaal bijwerken i.p.v. opnieuw op te
+        // vragen, zodat de poort direct verdwijnt in dezelfde render().
+        orgInfo = { ...orgInfo, subscriptionStatus: "active", plan: data.plan };
+        screen = "intro";
+        introStep = "lang";
+      } else {
+        // kind === "discount": de organisatie blijft "trialing" (dus de
+        // poort blijft actief) — enkel het bedrag bij de eerstvolgende
+        // checkout is nu lager. Stuur meteen door naar het
+        // abonnementsscherm (dat blijft, zoals hierboven, uitgezonderd van
+        // de poort) zodat de eigenaar meteen kan afrekenen; renderBilling()
+        // toont daar de kortingsmelding op basis van orgInfo.discountPercent.
+        orgInfo = { ...orgInfo, discountPercent: data.discountPercent };
+        screen = "billing";
+      }
+    } catch (err) {
+      gateError = err.message;
+    } finally {
+      gateBusy = false;
+      render();
+    }
+  }
+
+  function renderGate() {
+    const wrap = el("div", { class: "card" });
+    wrap.appendChild(el("h2", { text: ui("gateTitle") }));
+    wrap.appendChild(el("p", { text: ui("gateIntro") }));
+
+    wrap.appendChild(
+      el("button", {
+        class: "btn btn-primary",
+        text: ui("gateViewPlansBtn"),
+        onclick: () => {
+          screen = "billing";
+          render();
+        },
+      })
+    );
+
+    wrap.appendChild(el("p", { class: "muted gate-or", text: ui("gateOrDivider") }));
+
+    const form = el("form", {
+      class: "gate-code-form",
+      onsubmit: (e) => {
+        e.preventDefault();
+        handleRedeemCode();
+      },
+    });
+    form.appendChild(
+      el("div", { class: "field" }, [
+        el("label", { text: ui("gateCodeLabel") }),
+        el("input", {
+          type: "text",
+          value: gateCodeValue,
+          oninput: (e) => (gateCodeValue = e.target.value),
+        }),
+      ])
+    );
+    form.appendChild(
+      el("button", {
+        class: "btn btn-ghost",
+        type: "submit",
+        text: gateBusy ? ui("loading") : ui("gateCodeButton"),
+        disabled: gateBusy ? "disabled" : undefined,
+      })
+    );
+    wrap.appendChild(form);
+
+    if (gateError) wrap.appendChild(el("div", { class: "error", text: gateError }));
+
+    return wrap;
+  }
+
   // --- Scherm: abonnement (taak #117) -------------------------------------
   //
   // Start de Mollie-checkout voor een gekozen plan-sleutel. De sleutel is
@@ -1639,6 +1820,15 @@
       statusLine.appendChild(el("strong", { text: ui("billingCurrentPlanLabel") + ": " }));
       statusLine.appendChild(document.createTextNode(ui(statusKey)));
       wrap.appendChild(statusLine);
+    }
+
+    // Taak #118: kortingsmelding — puur informatief, hetzelfde principe als
+    // discountPercent zelf (zie organization.js): het daadwerkelijk
+    // afgerekende bedrag wordt hoe dan ook server-side herberekend
+    // (applyDiscount in billing.js), dit is enkel om vooraf duidelijk te
+    // maken dat een ingevoerde kortingscode geregistreerd staat.
+    if (orgInfo && orgInfo.discountPercent) {
+      wrap.appendChild(el("div", { class: "gate-discount-notice", text: ui("gateDiscountApplied")(orgInfo.discountPercent) }));
     }
 
     if (billingError) wrap.appendChild(el("div", { class: "error", text: billingError }));
