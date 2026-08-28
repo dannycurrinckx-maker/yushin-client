@@ -79,6 +79,13 @@ h4 { margin: 0 0 4px; font-size: 15px; color: var(--accent); }
 p { line-height: 1.5; }
 .muted { color: var(--muted); font-size: 13px; }
 
+/* Abonnementsscherm (taak #117) — plan-kaarten naast elkaar. */
+.plan-cards { display: flex; gap: 16px; flex-wrap: wrap; margin: 16px 0; }
+.plan-card { flex: 1 1 220px; display: flex; flex-direction: column; gap: 6px; }
+.plan-card .btn { margin-top: auto; }
+.plan-price { font-size: 24px; font-weight: 700; color: var(--accent); margin: 4px 0 0; }
+.billing-education-note { margin-top: 8px; }
+
 .field { margin-bottom: 14px; display: flex; flex-direction: column; gap: 4px; }
 .field label { font-size: 13px; color: var(--muted); }
 .field input, input[type="text"], input[type="email"], input[type="password"] {
@@ -151,6 +158,30 @@ p { line-height: 1.5; }
 
 .conclusion { font-style: italic; color: var(--ink); }
 
+/* Spoor 3.1 van het Verbeterplan (taak #110) — intended-use/disclaimerzin
+   bovenaan het rapport. Bewust met linker accentrand + eigen achtergrond,
+   NIET zomaar als normale .muted-tekst: dit moet opvallen, niet wegvallen. */
+.intended-use-statement {
+  margin: 10px 0 16px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 4px;
+  line-height: 1.4;
+}
+
+/* Taak #111 — compacte rapportfooter (vaste niet-medische positionering,
+   herhaald onderaan het rapport). Bewust subtieler dan de kop-versie
+   hierboven: geen kader, gewoon een dunne scheidingslijn, zodat het niet
+   met de kop-tekst concurreert maar wel altijd zichtbaar blijft. */
+.intended-use-footer {
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .clock-card { margin-top: 16px; text-align: center; }
 .clock-wrap { display: flex; justify-content: center; margin: 8px 0; }
 
@@ -186,6 +217,39 @@ p { line-height: 1.5; }
   color: var(--muted);
   font-size: 14px;
   line-height: 1.6;
+}
+
+/* Spoor 2.3 (Verbeterplan) — "coming soon"-sectie voor toekomstige modules.
+   Bewust subtiel: kleiner lettertype dan de hero-description, dunne
+   scheidingslijn erboven, zodat het niet concurreert met de eigenlijke
+   login/registratie-call-to-action eronder. */
+.coming-soon {
+  margin: 20px auto 0;
+  max-width: 480px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+}
+.coming-soon-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.coming-soon-intro {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.coming-soon-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.6;
+  text-align: left;
 }
 
 /* Verborgen demo-toegang (taak #87) — bewust klein en onopvallend, niet
@@ -310,8 +374,80 @@ p { line-height: 1.5; }
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Red-flag / safety-laag (Spoor 1.4, taak #104/#105). Twee gedragsniveaus:
+   .redflag-overlay (tier "hard"/NOODSIGNAAL) is een volledig blokkerende,
+   niet-sluitbare backdrop — dekt de hele viewport af (pointer-events vangt
+   alle klikken op de rest van de pagina op) tot de therapeut een nieuwe
+   sessie start. .redflag-banner (tier "soft"/ALARM+WAARSCHUWING) is NIET
+   blokkerend: de therapeut kan gewoon verder werken, maar moet elke melding
+   expliciet aanvinken als gelezen voor de banner verdwijnt (Danny's
+   expliciete instructie, chat 2026-08-26). Hoogste z-index van de app:
+   moet altijd boven de assistant-popup (1000) uit komen. */
+.redflag-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(10, 14, 12, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.redflag-modal {
+  background: var(--card);
+  border: 2px solid var(--accent-2);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+.redflag-modal h2 {
+  color: var(--accent-2);
+  margin-top: 0;
+}
+.redflag-item {
+  border-left: 4px solid var(--accent-2);
+  background: rgba(139, 30, 30, 0.12);
+  border-radius: 0 8px 8px 0;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  line-height: 1.45;
+  font-size: 14px;
+}
+.redflag-item-soft {
+  border-left-color: var(--warn);
+  background: rgba(217, 162, 75, 0.12);
+}
+.redflag-item strong { display: block; margin-bottom: 4px; }
+.redflag-ack-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.redflag-ack-row label { font-size: 13px; cursor: pointer; }
+.redflag-banner {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 20px;
+  z-index: 1500;
+  max-width: 520px;
+  margin: 0 auto;
+  background: var(--card);
+  border: 2px solid var(--warn);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  animation: assistant-popup-in 0.25s ease-out;
+}
+.redflag-banner h3 { color: var(--warn); margin: 0 0 8px; font-size: 15px; }
+
 @media (max-width: 640px) {
   .card { padding: 16px; }
   .assistant-popup { right: 12px; bottom: 12px; max-width: calc(100vw - 24px); }
   .assistant-thread { max-height: 280px; }
+  .redflag-modal { padding: 18px; }
 }

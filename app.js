@@ -53,6 +53,22 @@
   let resultData = null;
   let resultSessionId = null;
   let patientLabelInput = "";
+
+  // Red-flag / safety-laag (Spoor 1.4, taak #104/#105). `redFlags` komt van
+  // de server (resolveRedFlags-output: [{id, tier:"hard"|"soft", label,
+  // ernstniveau, message}]) en wordt zowel tijdens het interview
+  // (fetchNext) als bij het resultaat (fetchResult) ververst — een
+  // NOODSIGNAAL moet direct na dat antwoord zichtbaar zijn, niet pas na de
+  // resterende vragen (zie toelichting in src/routes/flow.js). `tier`
+  // "hard" (NOODSIGNAAL) blokkeert de hele app tot een nieuwe sessie start
+  // — dat is bewust GEEN dismissible state. `tier` "soft" (ALARM/
+  // WAARSCHUWING) is niet-blokkerend: ackedRedFlagIds houdt bij welke de
+  // therapeut expliciet als "gelezen" heeft aangevinkt (Danny's instructie,
+  // chat 2026-08-26); dit blijft opzettelijk staan over vragen heen binnen
+  // dezelfde sessie (eenmaal gelezen, blijft gelezen), en wordt enkel
+  // gereset bij een nieuwe sessie (zie restartBtn-handler).
+  let redFlags = [];
+  let ackedRedFlagIds = new Set();
   // Sluitstatus van de Yushin-assistent-pop-up (taak #89) — apart van
   // resultData zodat een klik op het sluitkruisje niet het hele
   // resultaatscherm laat herrenderen zonder de pop-up. Wordt gereset
@@ -117,6 +133,20 @@
   // src/routes/organization.js.
   let orgInfo = null;
 
+  // Abonnementsscherm (taak #117) — tot nu toe bestond er GEEN zichtbare
+  // prijs-/plankeuzepagina in de client, enkel de "Proefperiode"-badge
+  // hierboven. Dit vulde dat gat aan, nu prijzen vastliggen (taak #113).
+  // Bewust enkel voor de eigenaar (server staat /api/billing/checkout ook
+  // enkel toe voor role "owner", zie index.js) — zelfde patroon als
+  // screenBeforeAdmin hierboven.
+  let screenBeforeBilling = "intro";
+  let billingBusy = false;
+  let billingError = "";
+  // "monthly" of "yearly" — kiest enkel welke kaarten getoond worden, de
+  // uiteindelijke plan-sleutel (bv. "solo_yearly") die naar de server gaat
+  // hangt hiervan af (zie PLAN_CATALOG hieronder).
+  let billingInterval = "monthly";
+
   // Kleine, eigen UI-stringtabel voor de NIEUWE schermen (login/registreren)
   // die in de oorspronkelijke client-side tool niet bestonden (die had geen
   // authenticatie nodig). Alle overige teksten (vragen, resultaten,
@@ -125,9 +155,28 @@
   const UI = {
     nl: {
       appTitle: "Yushin",
-      heroTitle: "Yushin — digitale TCM-anamnese",
+      // Positionering herzien (Spoor 2.1, beslissing Danny 2026-08-26) en
+      // opnieuw herzien naar de niet-medische positionering (taak #111,
+      // bron: Yushin_DPA_Privacy_SaaS_NietMedische_Positionering_
+      // PreLegal_v2.xlsx, tabblad D, status "BESLIST"). De vorige versie
+      // ("gestructureerde klinische intake & patroonherkenning") gebruikte
+      // nog "klinisch", wat expliciet vermeden moet worden (tab D rij 5:
+      // "vermijd... 'diagnostiek'"; Extra-tabblad: "vermijd in
+      // klantgerichte juridische teksten termen als 'clinical decision
+      // support', 'diagnostiek', 'therapieplan', 'behandeladvies'... Deze
+      // keuze moet ook functioneel in UI/output worden doorgevoerd.").
+      heroTitle: "Yushin — educatief patroonoverzicht voor TCM & Japanse acupunctuur",
       heroDescription:
-        "Yushin begeleidt je (of je patiënt) stap voor stap door een gestructureerde TCM-anamnese van 78 vragen, en genereert automatisch een rapport met de belangrijkste disharmoniepatronen, een orgaanklok-overzicht en een bijpassend therapieplan. Log in of registreer je praktijk om te starten.",
+        "Yushin is een educatieve en informatieve softwaretoepassing voor professionele TCM-/acupunctuurbeoefenaars: het begeleidt je (of je patiënt) stap voor stap door een vaste vragenlijst van 78 vragen en toont automatisch een overzicht van traditionele patroonrelaties, een orgaanklok-overzicht en bijpassende traditionele referentie-informatie. Yushin stelt geen diagnose en bepaalt geen behandeling — de interpretatie en beoordeling blijven bij jou. Log in of registreer je praktijk om te starten.",
+      // Spoor 2.3 — "coming soon"-sectie (beslissing Danny: wel al tonen).
+      comingSoonTitle: "Binnenkort beschikbaar",
+      comingSoonIntro: "Yushin Core is het eerste onderdeel van een groeiend platform. Deze modules zijn in ontwikkeling:",
+      comingSoonItems: [
+        "Meridian — meridiaan- en acupunctuurpuntanalyse",
+        "Jing Jin — peesspierkanalen (Jing Jin) diagnostiek",
+        "Japanese — Japanse acupunctuurstijlen (o.a. Toyohari, meridiaantherapie)",
+        "Classical — klassieke bronteksten en canonieke syndroomdifferentiatie",
+      ],
       loginTitle: "Inloggen",
       registerTitle: "Nieuwe praktijk registreren",
       email: "E-mailadres",
@@ -176,21 +225,50 @@
       demoCodeLabel: "Admin-code",
       demoCodeButton: "Ga",
       demoCodeInvalid: "Ongeldige code.",
-      assistantAskShowPlan: "Wil je dat ik een vrijblijvend therapieplan-voorstel toon voor dit patroon?",
-      assistantShowPlanBtn: "Ja, toon het voorstel",
+      // Taak #111 — "therapieplan-voorstel" hernoemd: geen behandelvoorstel,
+      // enkel traditionele referentie-informatie (tab D rij 8/22).
+      assistantAskShowPlan: "Wil je dat ik traditionele referentie-informatie toon voor dit patroon?",
+      assistantShowPlanBtn: "Ja, toon de informatie",
       assistantDismissBtn: "Nee, bedankt",
-      assistantChooseTitle: "Kies een patroon om het voorstel te zien:",
+      assistantChooseTitle: "Kies een patroon om de referentie-informatie te zien:",
       assistantUnmatchedTitle: "Overige bevindingen",
       autoDemoBtn: "🧪 Demo: automatisch invullen",
       autoDemoConfirm:
         "Dit vult de vragenlijst automatisch in met telkens de eerste antwoordoptie, enkel om snel een indruk te geven van de app. Gebruik dit nooit tijdens een echt consult — de resultaten zijn nep. Doorgaan?",
       autoDemoCapped: (shown, total) => `Demo: toont de eerste ${shown} van de ${total} gevonden bevindingen.`,
+
+      // Abonnementsscherm (taak #117).
+      billingNavBtn: "Abonnement",
+      billingTitle: "Abonnement",
+      billingCurrentPlanLabel: "Huidig abonnement",
+      billingStatusTrialing: "Proefperiode",
+      billingStatusActive: "Actief",
+      billingStatusPastDue: "Betaling mislukt — controleer je betaalmethode",
+      billingIntervalMonthly: "Maandelijks",
+      billingIntervalYearly: "Jaarlijks (2 maanden gratis)",
+      billingChoosePlanBtn: "Kies dit abonnement",
+      billingChoosingBusy: "Bezig…",
+      billingCurrentPlanBtn: "Dit is je huidige abonnement",
+      planSoloName: "Yushin Professional",
+      planSoloDesc: "Voor een solo-praktijk. Onbeperkt aantal patroonverkenningen, 1 gebruiker.",
+      planTeamName: "Yushin Practice",
+      planTeamDesc: "Voor een praktijk met een team. Onbeperkt aantal patroonverkenningen, tot 3 gebruikers.",
+      billingEducationNote:
+        "Ben je student, opleider of net afgestudeerd? Voor het Education-tarief nemen we dit nog handmatig op — neem contact op.",
     },
     en: {
       appTitle: "Yushin",
-      heroTitle: "Yushin — digital TCM intake",
+      heroTitle: "Yushin — educational pattern overview for TCM & Japanese acupuncture",
       heroDescription:
-        "Yushin guides you (or your patient) step by step through a structured 78-question TCM intake, and automatically generates a report with the key disharmony patterns, an organ-clock overview, and a matching treatment plan. Log in or register your practice to get started.",
+        "Yushin is an educational and informational software application for professional TCM/acupuncture practitioners: it guides you (or your patient) step by step through a fixed 78-question intake and automatically shows an overview of traditional pattern relationships, an organ-clock overview, and matching traditional reference information. Yushin does not provide a diagnosis and does not determine treatment — interpretation and assessment remain yours. Log in or register your practice to get started.",
+      comingSoonTitle: "Coming soon",
+      comingSoonIntro: "Yushin Core is the first part of a growing platform. These modules are in development:",
+      comingSoonItems: [
+        "Meridian — meridian and acupuncture point analysis",
+        "Jing Jin — sinew-channel (Jing Jin) diagnostics",
+        "Japanese — Japanese acupuncture styles (incl. Toyohari, Meridian Therapy)",
+        "Classical — classical source texts and canonical pattern differentiation",
+      ],
       loginTitle: "Log in",
       registerTitle: "Register a new practice",
       email: "Email address",
@@ -239,15 +317,33 @@
       demoCodeLabel: "Admin code",
       demoCodeButton: "Go",
       demoCodeInvalid: "Invalid code.",
-      assistantAskShowPlan: "Would you like me to show a proposed treatment plan for this pattern?",
-      assistantShowPlanBtn: "Yes, show the proposal",
+      assistantAskShowPlan: "Would you like me to show traditional reference information for this pattern?",
+      assistantShowPlanBtn: "Yes, show the information",
       assistantDismissBtn: "No, thanks",
-      assistantChooseTitle: "Choose a pattern to see the proposal:",
+      assistantChooseTitle: "Choose a pattern to see the reference information:",
       assistantUnmatchedTitle: "Other findings",
       autoDemoBtn: "🧪 Demo: auto-fill",
       autoDemoConfirm:
         "This automatically fills in the questionnaire by always picking the first answer option, just to quickly show what the app can do. Never use this during a real consultation — the results are fake. Continue?",
       autoDemoCapped: (shown, total) => `Demo: showing the first ${shown} of ${total} findings.`,
+
+      billingNavBtn: "Subscription",
+      billingTitle: "Subscription",
+      billingCurrentPlanLabel: "Current plan",
+      billingStatusTrialing: "Trial",
+      billingStatusActive: "Active",
+      billingStatusPastDue: "Payment failed — please check your payment method",
+      billingIntervalMonthly: "Monthly",
+      billingIntervalYearly: "Yearly (2 months free)",
+      billingChoosePlanBtn: "Choose this plan",
+      billingChoosingBusy: "Loading…",
+      billingCurrentPlanBtn: "This is your current plan",
+      planSoloName: "Yushin Professional",
+      planSoloDesc: "For a solo practice. Unlimited pattern explorations, 1 user.",
+      planTeamName: "Yushin Practice",
+      planTeamDesc: "For a practice with a team. Unlimited pattern explorations, up to 3 users.",
+      billingEducationNote:
+        "Student, educator, or recent graduate? We still handle the Education rate manually — get in touch.",
     },
   };
   function ui(key) {
@@ -271,6 +367,34 @@
     return val !== undefined ? val : STRINGS_BY_LANG.nl[key];
   }
   const GROUP_KEY = { strong: "groupStrong", moderate: "groupModerate", light: "groupLight" };
+
+  // Prijs-catalogus voor het abonnementsscherm (taak #117) — bewust ENKEL
+  // voor weergave. Het daadwerkelijke bedrag dat aan Mollie doorgegeven
+  // wordt, komt nooit hiervandaan: dat wordt server-side opgezocht in
+  // src/lib/plans.js op basis van de plan-SLEUTEL die hier gekozen wordt
+  // (zie handleStartCheckout in billing.js). Als deze twee ooit uit elkaar
+  // lopen is het ergste gevolg een verkeerd getoond bedrag vóór het
+  // afrekenen — nooit een verkeerd geïnd bedrag.
+  const PLAN_CATALOG = [
+    {
+      soloKey: "solo",
+      monthlyKey: "solo",
+      yearlyKey: "solo_yearly",
+      nameKey: "planSoloName",
+      descKey: "planSoloDesc",
+      monthlyPrice: "€ 8,95",
+      yearlyPrice: "€ 89",
+    },
+    {
+      soloKey: "team",
+      monthlyKey: "team",
+      yearlyKey: "team_yearly",
+      nameKey: "planTeamName",
+      descKey: "planTeamDesc",
+      monthlyPrice: "€ 19,95",
+      yearlyPrice: "€ 199",
+    },
+  ];
 
   // --- API-helper --------------------------------------------------------
 
@@ -335,7 +459,103 @@
     else if (screen === "interview") body = renderInterview();
     else if (screen === "results") body = renderResults();
     else if (screen === "admin") body = renderAdmin();
+    else if (screen === "billing") body = renderBilling();
     root.appendChild(body);
+
+    // Red-flag / safety-laag (Spoor 1.4, taak #105) — bewust NA de rest van
+    // de pagina toegevoegd zodat de blokkerende overlay (tier "hard") er
+    // altijd bovenop ligt (z-index 2000, hoger dan de assistant-popup). Enkel
+    // relevant tijdens interview/results — op andere schermen (auth, intro,
+    // admin) zijn er per definitie nog geen redFlags opgehaald.
+    const flagOverlay = renderRedFlagLayer();
+    if (flagOverlay) root.appendChild(flagOverlay);
+  }
+
+  // Spoor 1.4 (taak #104/#105). Zie de toelichting bij de state-declaratie
+  // van redFlags/ackedRedFlagIds hierboven voor de twee gedragsniveaus.
+  function renderRedFlagLayer() {
+    if (!redFlags.length) return null;
+    const hardFlags = redFlags.filter((f) => f.tier === "hard");
+    if (hardFlags.length) return renderRedFlagOverlay(hardFlags);
+
+    const unackedSoft = redFlags.filter((f) => f.tier === "soft" && !ackedRedFlagIds.has(f.id));
+    if (!unackedSoft.length) return null;
+    return renderRedFlagBanner(unackedSoft);
+  }
+
+  // Tier "hard" (NOODSIGNAAL) — volledig blokkerende overlay, GEEN
+  // "toch doorgaan"-knop: Danny's expliciete instructie was "noodsignaal is
+  // stop". De enige uitweg is een nieuwe sessie starten (zelfde handler als
+  // de gewone "Opnieuw beginnen"-knop in renderResults).
+  function renderRedFlagOverlay(hardFlags) {
+    const overlay = el("div", { class: "redflag-overlay" });
+    const modal = el("div", { class: "redflag-modal" });
+    modal.appendChild(el("h2", { text: t("redflagModalTitle") }));
+    modal.appendChild(el("p", { text: t("redflagModalIntro") }));
+    hardFlags.forEach((f) => {
+      const item = el("div", { class: "redflag-item" });
+      item.appendChild(el("strong", { text: f.label }));
+      item.appendChild(el("span", { text: f.message }));
+      modal.appendChild(item);
+    });
+    modal.appendChild(el("p", { class: "muted", text: t("redflagRestartCta") }));
+    modal.appendChild(
+      el("button", {
+        class: "btn btn-primary",
+        text: ui("restart"),
+        onclick: restartSession,
+      })
+    );
+    overlay.appendChild(modal);
+    return overlay;
+  }
+
+  // Tier "soft" (ALARM/WAARSCHUWING) — niet-blokkerende banner. De therapeut
+  // kan gewoon verder klikken in de vragenlijst/resultaten (deze banner
+  // onderschept geen klikken op de rest van de pagina); elke melding moet
+  // wel individueel aangevinkt worden voor ze uit de banner verdwijnt.
+  function renderRedFlagBanner(unackedSoft) {
+    const banner = el("div", { class: "redflag-banner" });
+    banner.appendChild(el("h3", { text: t("redflagBannerTitle") }));
+    banner.appendChild(el("p", { class: "muted", text: t("redflagBannerIntro") }));
+    unackedSoft.forEach((f) => {
+      const item = el("div", { class: "redflag-item redflag-item-soft" });
+      item.appendChild(el("strong", { text: f.label }));
+      item.appendChild(el("span", { text: f.message }));
+      const ackRow = el("div", { class: "redflag-ack-row" });
+      const checkboxId = `redflag-ack-${f.id}`;
+      const checkbox = el("input", { type: "checkbox", id: checkboxId });
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+          ackedRedFlagIds.add(f.id);
+          render();
+        }
+      });
+      ackRow.appendChild(checkbox);
+      const label = el("label", { text: t("redflagAckLabel") });
+      label.setAttribute("for", checkboxId);
+      ackRow.appendChild(label);
+      item.appendChild(ackRow);
+      banner.appendChild(item);
+    });
+    return banner;
+  }
+
+  // Gedeelde restart-logica (Spoor 1.4, taak #105) — dezelfde reset als de
+  // bestaande "Opnieuw beginnen"-knop in renderResults, nu ook aanroepbaar
+  // vanuit de blokkerende red-flag-overlay. Reset bewust ook
+  // redFlags/ackedRedFlagIds: een nieuwe sessie start zonder de
+  // veiligheidsmeldingen van de vorige sessie.
+  function restartSession() {
+    context = { role: null, female: null, pediatric: null };
+    introStep = "lang";
+    answers = {};
+    resultData = null;
+    patientLabelInput = "";
+    redFlags = [];
+    ackedRedFlagIds = new Set();
+    screen = "intro";
+    render();
   }
 
   function renderTopBar() {
@@ -361,9 +581,24 @@
       bar.appendChild(el("span", { class: "muted", text: ui("welcomeBack")(currentUser.name) }));
 
       if (orgInfo && orgInfo.subscriptionStatus === "trialing") {
-        // Bewust enkel een statusbadge, geen bedrag — prijzen zijn nog een
-        // openstaande beslissing (zie src/lib/plans.js).
-        bar.appendChild(el("span", { class: "lang-btn", text: ui("trialBadge") }));
+        // Statusbadge — klikbaar naar het abonnementsscherm (taak #117) voor
+        // de eigenaar, zodat de proefperiode-badge zelf ook meteen de weg
+        // wijst naar waar je een abonnement kan kiezen.
+        bar.appendChild(
+          el("span", {
+            class: "lang-btn",
+            text: ui("trialBadge"),
+            title: currentUser.role === "owner" ? ui("billingNavBtn") : undefined,
+            onclick:
+              currentUser.role === "owner" && screen !== "billing"
+                ? () => {
+                    screenBeforeBilling = screen;
+                    screen = "billing";
+                    render();
+                  }
+                : undefined,
+          })
+        );
       }
 
       if (screen === "admin") {
@@ -377,9 +612,31 @@
             },
           })
         );
+      } else if (screen === "billing") {
+        bar.appendChild(
+          el("button", {
+            class: "btn btn-ghost",
+            text: ui("backToApp"),
+            onclick: () => {
+              screen = screenBeforeBilling || "intro";
+              render();
+            },
+          })
+        );
       } else if (currentUser.role === "owner" && screen !== "auth") {
         // Beheerpaneel (taak #73) — enkel voor de praktijkeigenaar, en enkel
         // zinvol als er al ingelogd/gekozen is (niet op het auth-scherm).
+        bar.appendChild(
+          el("button", {
+            class: "btn btn-ghost",
+            text: ui("billingNavBtn"),
+            onclick: () => {
+              screenBeforeBilling = screen;
+              screen = "billing";
+              render();
+            },
+          })
+        );
         bar.appendChild(
           el("button", {
             class: "btn btn-ghost",
@@ -430,6 +687,21 @@
     hero.appendChild(el("img", { class: "hero-logo", src: LOGO_DATAURL, alt: "Yushin logo" }));
     hero.appendChild(el("h1", { class: "hero-title", text: ui("heroTitle") }));
     hero.appendChild(el("p", { class: "hero-description", text: ui("heroDescription") }));
+
+    // Spoor 2.3 (Verbeterplan) — "coming soon"-sectie voor toekomstige
+    // modules. Bewust enkel een naam+korte omschrijving, geen datums of
+    // beloftes over wanneer iets klaar is — dat zou weer een verwachting
+    // scheppen die niet hard gemaakt kan worden.
+    const comingSoon = el("div", { class: "coming-soon" });
+    comingSoon.appendChild(el("h2", { class: "coming-soon-title", text: ui("comingSoonTitle") }));
+    comingSoon.appendChild(el("p", { class: "coming-soon-intro", text: ui("comingSoonIntro") }));
+    const list = el("ul", { class: "coming-soon-list" });
+    (ui("comingSoonItems") || []).forEach((item) => {
+      list.appendChild(el("li", { text: item }));
+    });
+    comingSoon.appendChild(list);
+    hero.appendChild(comingSoon);
+
     return hero;
   }
 
@@ -928,6 +1200,19 @@
     try {
       const data = await api("/api/flow/next", "POST", { lang, context, answers });
       flowBusy = false;
+      redFlags = data.redFlags || [];
+      // NOODSIGNAAL (tier "hard") — de flow stopt hier bewust: currentQuestion
+      // wordt NIET bijgewerkt naar de volgende vraag (die blijft dus
+      // onbereikbaar/onbeantwoord), enkel de overlay wordt getoond. Zonder
+      // deze vroege return zou de interview-flow gewoon naar de volgende
+      // vraag doorlopen terwijl de blokkerende melding er toevallig
+      // bovenop ligt — het chooseOption()-guard hierboven voorkomt dan wel
+      // een VOLGEND antwoord, maar de vraag zelf zou al onterecht
+      // verspringen. Zie redflag-block-test.mjs scenario 1.
+      if (redFlags.some((f) => f.tier === "hard")) {
+        render();
+        return;
+      }
       if (data.done) {
         await fetchResult();
         return;
@@ -978,6 +1263,16 @@
   }
 
   async function chooseOption(optionIndex) {
+    // Spoor 1.4 (taak #104/#105) — functionele blokkade, niet enkel
+    // visueel. De redflag-overlay ligt weliswaar bovenop de rest van de
+    // pagina (CSS z-index), maar dat houdt enkel echte muisklikken tegen;
+    // een onderliggende knop blijft anders technisch nog aanklikbaar/
+    // programmatisch bereikbaar (bv. toetsenbordnavigatie, of automatische
+    // tests — zie de bugfix-toelichting bij dit commit). Zolang er een
+    // tier "hard" (NOODSIGNAAL) redFlag actief is, mag chooseOption() dus
+    // sowieso niets versturen, ongeacht hoe de aanroep tot stand kwam.
+    if (redFlags.some((f) => f.tier === "hard")) return;
+
     const key = currentQuestion.key;
     flowBusy = true;
     render();
@@ -1007,6 +1302,7 @@
       });
       resultData = data.result;
       resultSessionId = data.sessionId;
+      redFlags = data.result.redFlags || [];
       assistantPopupDismissed = false;
       assistantConversationOpen = false;
       assistantOpenedPatterns = [];
@@ -1024,6 +1320,14 @@
     const wrap = el("div", { class: "card results-card" });
     wrap.appendChild(el("h2", { text: t("reportTitle") }));
     wrap.appendChild(el("div", { class: "muted", text: `${resultData.generatedAt.slice(0, 10)} · ${resultSessionId}` }));
+
+    // Spoor 3.1 van het Verbeterplan (taak #110) — UI-zichtbare intended-use
+    // / disclaimerverklaring. Staat hier bewust bovenaan het rapport, vóór
+    // de patronen, en altijd zichtbaar (ook in de noPatterns-tak hieronder)
+    // — dit is precies het gat dat Spoor 3.1 signaleerde: er stond nog
+    // nergens in de nieuwe SaaS-client een zichtbare disclaimer, enkel in
+    // het (niet meer gebruikte) contract-/legal-concept-document.
+    wrap.appendChild(el("p", { class: "muted intended-use-statement", text: t("intendedUseStatement") }));
 
     // Welke patronen effectief als kaart in het rapport verschijnen — bv.
     // begrensd tot 5 tijdens de demo-cap (taak #90). Buiten het if/else
@@ -1054,6 +1358,18 @@
             el("div", { class: "meter-fill", style: `width:${Math.round((p.count / maxCount) * 100)}%` }),
           ])
         );
+        // Spoor 1.1 (taak #101/#105) — confidence-label, apart van de
+        // group-tekst hierboven: zegt hoe duidelijk dit patroon zich
+        // onderscheidt van het volgende in de ranglijst (score-afstand),
+        // niet enkel hoe vaak het voorkwam.
+        if (p.confidence) {
+          card.appendChild(
+            el("div", {
+              class: "muted",
+              text: `${t("confidencePrefix")}: ${t("confidence" + p.confidence[0].toUpperCase() + p.confidence.slice(1))}`,
+            })
+          );
+        }
         if (p.evidence) {
           const det = el("details");
           det.appendChild(el("summary", { text: t("evidenceToggle") }));
@@ -1082,6 +1398,48 @@
         el("p", { class: "muted", text: resultData.clockHighlights.length ? t("clockNoteHas") : t("clockNoteNone") })
       );
       wrap.appendChild(clockCard);
+
+      // Spoor 1.3 (taak #103/#105) — contradictiedetectie. Server stuurt
+      // enkel iets mee voor de therapeut-rol + NL-sessies (zie flow.js);
+      // hier dus gewoon niets renderen als de array leeg is.
+      if (resultData.contradictions && resultData.contradictions.length) {
+        const contraCard = el("div", { class: "result-card" });
+        contraCard.appendChild(el("h3", { text: t("contradictionsSectionTitle") }));
+        resultData.contradictions.forEach((c) => {
+          const item = el("div", { class: "redflag-item" + (c.tier === "nuance" ? " redflag-item-soft" : "") });
+          item.appendChild(
+            el("strong", { text: `"${c.patternA}" (${c.countA}×) ↔ "${c.patternB}" (${c.countB}×)` })
+          );
+          item.appendChild(el("span", { text: c.note }));
+          contraCard.appendChild(item);
+        });
+        if (resultData.contradictionNote) {
+          contraCard.appendChild(el("p", { class: "muted", text: resultData.contradictionNote }));
+        }
+        wrap.appendChild(contraCard);
+      }
+
+      // Spoor 1.2 (taak #102/#105) — vervolgvragen-detectie. Enkel gevuld
+      // als er dicht-bij-elkaar scorende patronen zijn ÉN er onbeantwoorde/
+      // overgeslagen vragen bestaan die daartussen zouden discrimineren
+      // (zie suggestDiscriminatingQuestions in flowEngine.js) — in de
+      // huidige client (geen instellingenpaneel, taak #72-scopekeuze) komt
+      // dit vooral voor bij vragen die door een `requires`-gate onbereikbaar
+      // bleven.
+      if (resultData.suggestedQuestions && resultData.suggestedQuestions.length) {
+        const suggestCard = el("div", { class: "result-card" });
+        suggestCard.appendChild(el("h3", { text: t("suggestedQuestionsTitle") }));
+        suggestCard.appendChild(el("p", { class: "muted", text: t("suggestedQuestionsIntro") }));
+        const ul = el("ul");
+        resultData.suggestedQuestions.forEach((sq) => {
+          const [a, b] = sq.discriminatesBetween;
+          ul.appendChild(
+            el("li", { text: `${sq.questionText} — ${t("suggestedQuestionsDiscriminates")(a, b)}` })
+          );
+        });
+        suggestCard.appendChild(ul);
+        wrap.appendChild(suggestCard);
+      }
     }
 
     if (resultData.therapyPlan) {
@@ -1116,19 +1474,19 @@
       if (bubble) wrap.appendChild(bubble);
     }
 
+    // Taak #111 — vaste rapportfooter met de niet-medische positionering
+    // (Yushin_DPA_Privacy_SaaS_NietMedische_Positionering_PreLegal_v2.xlsx,
+    // tabblad D, rij 10: "Rapport bevat vaste footer met niet-medische
+    // positionering"). Losse, kortere tekst dan de intendedUseStatement
+    // bovenaan — bewust nog een keer onderaan, zodat het rapport ook als
+    // afzonderlijk gedeelde/afgedrukte pagina altijd deze context toont.
+    wrap.appendChild(el("p", { class: "muted intended-use-footer", text: t("intendedUseFooter") }));
+
     wrap.appendChild(
       el("button", {
         class: "btn btn-primary",
         text: ui("restart"),
-        onclick: () => {
-          context = { role: null, female: null, pediatric: null };
-          introStep = "lang";
-          answers = {};
-          resultData = null;
-          patientLabelInput = "";
-          screen = "intro";
-          render();
-        },
+        onclick: restartSession,
       })
     );
 
@@ -1237,6 +1595,101 @@
       adminError = err.message;
       render();
     }
+  }
+
+  // --- Scherm: abonnement (taak #117) -------------------------------------
+  //
+  // Start de Mollie-checkout voor een gekozen plan-sleutel. De sleutel is
+  // enkel een NAAM ("solo"/"team"/"solo_yearly"/"team_yearly") — het bedrag
+  // wordt, zoals overal in deze app, altijd server-side opgezocht (zie
+  // handleStartCheckout in src/routes/billing.js). redirectUrl wijst terug
+  // naar de huidige pagina; bij terugkeer haalt de bestaande
+  // token-bootstrap-logica (onderaan dit bestand) orgInfo automatisch
+  // opnieuw op, dus de status/plan-weergave hier klopt vanzelf weer bij.
+  async function handleChoosePlan(planKey) {
+    billingBusy = true;
+    billingError = "";
+    render();
+    try {
+      const redirectUrl = location.origin + location.pathname;
+      const data = await api("/api/billing/checkout", "POST", { plan: planKey, redirectUrl });
+      if (!data || !data.checkoutUrl) {
+        throw new Error("Geen checkout-URL ontvangen.");
+      }
+      location.href = data.checkoutUrl;
+    } catch (err) {
+      billingError = err.message;
+      billingBusy = false;
+      render();
+    }
+  }
+
+  function renderBilling() {
+    const wrap = el("div", { class: "card" });
+    wrap.appendChild(el("h2", { text: ui("billingTitle") }));
+
+    if (orgInfo) {
+      const statusKey =
+        orgInfo.subscriptionStatus === "active"
+          ? "billingStatusActive"
+          : orgInfo.subscriptionStatus === "past_due"
+          ? "billingStatusPastDue"
+          : "billingStatusTrialing";
+      const statusLine = el("p", { class: "muted" });
+      statusLine.appendChild(el("strong", { text: ui("billingCurrentPlanLabel") + ": " }));
+      statusLine.appendChild(document.createTextNode(ui(statusKey)));
+      wrap.appendChild(statusLine);
+    }
+
+    if (billingError) wrap.appendChild(el("div", { class: "error", text: billingError }));
+
+    // Maandelijks/jaarlijks-toggel — bepaalt enkel welke plan-sleutel de
+    // "Kies dit abonnement"-knop straks meestuurt.
+    const toggle = el("div", { class: "lang-switch" });
+    [
+      { code: "monthly", label: ui("billingIntervalMonthly") },
+      { code: "yearly", label: ui("billingIntervalYearly") },
+    ].forEach(({ code, label }) => {
+      toggle.appendChild(
+        el("button", {
+          class: "lang-btn" + (billingInterval === code ? " active" : ""),
+          text: label,
+          onclick: () => {
+            billingInterval = code;
+            render();
+          },
+        })
+      );
+    });
+    wrap.appendChild(toggle);
+
+    const cardRow = el("div", { class: "plan-cards" });
+    PLAN_CATALOG.forEach((plan) => {
+      const planKey = billingInterval === "yearly" ? plan.yearlyKey : plan.monthlyKey;
+      const price = billingInterval === "yearly" ? plan.yearlyPrice : plan.monthlyPrice;
+      const per = billingInterval === "yearly" ? ui("billingIntervalYearly") : ui("billingIntervalMonthly");
+      const isCurrent = orgInfo && orgInfo.plan === planKey && orgInfo.subscriptionStatus !== "trialing";
+
+      const card = el("div", { class: "card plan-card" });
+      card.appendChild(el("h3", { text: ui(plan.nameKey) }));
+      card.appendChild(el("p", { class: "muted", text: ui(plan.descKey) }));
+      card.appendChild(el("p", { class: "plan-price", text: price }));
+      card.appendChild(el("p", { class: "muted", text: per }));
+      card.appendChild(
+        el("button", {
+          class: "btn btn-primary",
+          text: isCurrent ? ui("billingCurrentPlanBtn") : billingBusy ? ui("billingChoosingBusy") : ui("billingChoosePlanBtn"),
+          disabled: isCurrent || billingBusy ? "disabled" : undefined,
+          onclick: () => handleChoosePlan(planKey),
+        })
+      );
+      cardRow.appendChild(card);
+    });
+    wrap.appendChild(cardRow);
+
+    wrap.appendChild(el("p", { class: "muted billing-education-note", text: ui("billingEducationNote") }));
+
+    return wrap;
   }
 
   function renderAdmin() {

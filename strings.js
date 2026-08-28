@@ -29,8 +29,11 @@ const STRINGS_BY_LANG = {
     therapyPlanAskMei:"🗨️ Laat Yushin het toelichten",
     therapyPlanMenuIntro:"Ik kan je hier kort meer over vertellen. Waarover wil je dat ik uitleg geef?",
     therapyPlanBackToMenu:"← Terug naar overzicht",
-    therapyPlanPoints:"Aanbevolen punten", therapyPlanLifestyle:"Leefstijl/voeding",
-    therapyPlanUnmatched:(n)=>`Voor ${n} van de herkende patronen is er (nog) geen therapieplan-data beschikbaar — die zijn hier bewust weggelaten.`,
+    // Taak #111 — "Aanbevolen punten" was prescriptief taalgebruik (verboden
+    // term per de niet-medische positionering, tab D rij 8: "recommended
+    // treatment"-achtige framing). Hernoemd naar neutrale referentietaal.
+    therapyPlanPoints:"Traditionele referentiepunten", therapyPlanLifestyle:"Leefstijl/voeding (traditionele info)",
+    therapyPlanUnmatched:(n)=>`Voor ${n} van de herkende patronen is er (nog) geen traditionele referentie-informatie beschikbaar — die zijn hier bewust weggelaten.`,
     therapyPlanDisclaimer:"<strong>Let op:</strong> dit is een algemeen, vrijblijvend voorstel op basis van de herkende TCM-patronen uit deze anamnese — geen vaste protocollen, en geen vervanging voor tong-/polsdiagnose of je eigen klinische beoordeling.",
     voiceSelectTitle:"Kies een stem voor Yushin — de kwaliteit hangt af van wat jouw browser/OS aanbiedt",
     skipSectionBtn:"Sectie overslaan", pdfBtn:"📄 Samenvatting als PDF",
@@ -54,6 +57,26 @@ const STRINGS_BY_LANG = {
     askPediatric:"Betreft dit consult een kind, of wil je vragen over zwangerschap/geboorte(-voorgeschiedenis) meenemen?",
     pediatricYes:"Ja, neem de pediatrie-sectie mee", pediatricNo:"Nee, overslaan",
     groupStrong:"Sterk aanwezig", groupModerate:"Matig aanwezig", groupLight:"Licht aanwezig",
+    // Spoor 1.1 (taak #101/#105) — confidence-label, apart van groupLabel:
+    // "group" zegt hoe vaak het patroon voorkwam, "confidence" zegt hoe
+    // duidelijk het zich onderscheidt van het volgende patroon in de
+    // ranglijst.
+    confidencePrefix:"Zekerheid",
+    confidenceStrong:"grote voorsprong op nummer 2", confidenceModerate:"kleine voorsprong op nummer 2", confidenceWeak:"gelijke stand met nummer 2",
+    // Spoor 1.3 (taak #103/#105) — contradictiedetectie.
+    contradictionsSectionTitle:"⚠️ Ter controle: mogelijk tegenstrijdige patronen",
+    contradictionsVs:(a,b)=>`"${a}" (${a}×) tegenover "${b}"`,
+    // Spoor 1.2 (taak #102/#105) — vervolgvragen-detectie.
+    suggestedQuestionsTitle:"Vragen die dit verder zouden verduidelijken",
+    suggestedQuestionsIntro:"Deze patronen scoren dicht bij elkaar. Onderstaande (nog niet beantwoorde) vragen zouden hiertussen kunnen discrimineren:",
+    suggestedQuestionsDiscriminates:(a,b)=>`onderscheidt "${a}" van "${b}"`,
+    // Spoor 1.4 (taak #104/#105) — red-flag/safety-laag.
+    redflagModalTitle:"⚠️ Belangrijke veiligheidsmelding",
+    redflagModalIntro:"Op basis van de veiligheidscontrole is er een signaal dat buiten het TCM-kader valt. De anamnese blijft gepauzeerd tot je een nieuwe sessie start.",
+    redflagBannerTitle:"⚠️ Aandachtspunten om te lezen",
+    redflagBannerIntro:"Je kan gewoon verder werken — vink elke melding hieronder aan zodra je ze gelezen hebt.",
+    redflagAckLabel:"Ik heb dit gelezen en begrepen",
+    redflagRestartCta:"Start een nieuwe sessie om verder te gaan.",
     disclaimerPolsBit:"en een gestructureerde polsdiagnose-vragenlijst ",
     disclaimerPolsSentence:" De polsdiagnose hier is een zelf-gerapporteerde vragenlijst, geen vervanging voor pols-palpatie door een opgeleide behandelaar.",
     disclaimerBase:(polsBit,polsSentence)=>`<strong>Belangrijk:</strong> dit is een educatief hulpmiddel gebaseerd op de klassieke TCM "10 vragen"-anamnese (uitgebreid met gynaecologie/pediatrie, orgaanklok ${polsBit}) en geeft een <em>werkhypothese</em>, geen medische diagnose. Tongdiagnose (visuele inspectie) is niet meegenomen en blijft essentieel voor een volledige TCM-diagnose.${polsSentence} Raadpleeg bij twijfel of ernstige klachten altijd een arts of bevoegde TCM-therapeut.`,
@@ -66,7 +89,24 @@ const STRINGS_BY_LANG = {
     compareNew:"nieuw",
     allDone:"Alle vragen zijn doorlopen. Hier is mijn overzicht van de TCM-patronen die uit de antwoorden naar voren komen:",
     noPatterns:"Er kwamen geen specifieke patronen naar voren uit de gegeven antwoorden — mogelijk werden veel vragen overgeslagen, of wijst dit op een grotendeels gebalanceerd beeld. Overweeg de anamnese opnieuw te doorlopen met meer specifieke antwoorden, of vul aan met tongdiagnose en polsdiagnose.",
-    reportTitle:"Samenvattend rapport", evidenceToggle:"Onderbouwing tonen",
+    reportTitle:"TCM Patroonoverzicht", evidenceToggle:"Onderbouwing tonen",
+    // Spoor 3.1 van het Verbeterplan (taak #110), HERZIEN naar de
+    // niet-medische positionering (taak #111, bron:
+    // Yushin_DPA_Privacy_SaaS_NietMedische_Positionering_PreLegal_v2.xlsx,
+    // tabblad "D. Niet-medische positionering", status "BESLIST"). Danny's
+    // team legde expliciet vast dat Yushin GEEN diagnose-, screening-,
+    // triage- of behandeladviessysteem is, en dat "exact dezelfde
+    // kernomschrijving" (de pro-forma kernclausule, tab D rij 17) gebruikt
+    // moet worden in juridische teksten ÉN klantcommunicatie/UI. Deze
+    // tekst is daarom (bijna) letterlijk die kernclausule, en vervangt de
+    // eerdere, nog te "klinisch" geformuleerde versie (die sprak van
+    // "klinische intake"/"klinische beoordeling"/"behandelbeslissing").
+    intendedUseStatement:"Belangrijk: Yushin is uitsluitend bedoeld als educatieve en informatieve referentiesoftware binnen de context van Traditionele Chinese Geneeskunde en Japanse acupunctuur. De toepassing structureert de door jou ingevoerde informatie en toont traditionele patroonrelaties, theorie, meridiaanverbanden en referentie-informatie op basis van vooraf vastgelegde regels. Yushin stelt geen medische diagnose, voert geen medische screening of spoedtriage uit, voorspelt geen ziekte en bepaalt, adviseert of optimaliseert geen medische of therapeutische behandeling. Deze informatie vervangt niet je eigen professionele beoordeling en bevoegdheid, en je blijft zelf verantwoordelijk voor de interpretatie en voor elke beslissing of handeling buiten Yushin.",
+    // Compacte "footer"-variant van dezelfde kernclausule (tab D rij 10:
+    // "Rapport bevat vaste footer met niet-medische positionering") —
+    // apart getoond onderaan het rapport, naast de volledige tekst
+    // bovenaan.
+    intendedUseFooter:"Yushin: educatieve/informatieve referentiesoftware voor TCM & Japanse acupunctuur. Geen medische diagnose, screening, triage of behandeladvies.",
     clockCardTitle:"Orgaanklok — jouw aandachtspunten",
     clockNoteHas:"De oranje segmenten zijn de tijdstippen waarop jij klachten aangaf — dat orgaan/meridiaan is volgens de orgaanklok op dat moment extra actief.",
     clockNoteNone:"Er kwamen geen uitgesproken tijdsgebonden klachten naar voren — de orgaanklok hieronder dient als referentie.",
@@ -122,6 +162,19 @@ const STRINGS_BY_LANG = {
     askPediatric:"Is this consult for a child, or do you want to include questions about pregnancy/birth history?",
     pediatricYes:"Yes, include the pediatric section", pediatricNo:"No, skip",
     groupStrong:"Strongly present", groupModerate:"Moderately present", groupLight:"Slightly present",
+    confidencePrefix:"Confidence",
+    confidenceStrong:"clear lead over #2", confidenceModerate:"small lead over #2", confidenceWeak:"tied with #2",
+    contradictionsSectionTitle:"⚠️ Worth checking: possibly contradictory patterns",
+    contradictionsVs:(a,b)=>`"${a}" (${a}×) versus "${b}"`,
+    suggestedQuestionsTitle:"Questions that would help clarify this",
+    suggestedQuestionsIntro:"These patterns score close together. The following (not yet answered) questions could help discriminate between them:",
+    suggestedQuestionsDiscriminates:(a,b)=>`distinguishes "${a}" from "${b}"`,
+    redflagModalTitle:"⚠️ Important safety notice",
+    redflagModalIntro:"Based on the safety check, there is a signal that falls outside the TCM framework. The intake stays paused until you start a new session.",
+    redflagBannerTitle:"⚠️ Points to review",
+    redflagBannerIntro:"You can keep working — check off each notice below once you've read it.",
+    redflagAckLabel:"I have read and understood this",
+    redflagRestartCta:"Start a new session to continue.",
     disclaimerPolsBit:"and a structured pulse-diagnosis questionnaire ",
     disclaimerPolsSentence:" The pulse diagnosis here is a self-reported questionnaire, not a substitute for pulse palpation by a trained practitioner.",
     disclaimerBase:(polsBit,polsSentence)=>`<strong>Important:</strong> this is an educational tool based on the classic TCM "10 questions" intake (extended with gynaecology/pediatrics, organ clock ${polsBit}) and provides a <em>working hypothesis</em>, not a medical diagnosis. Tongue diagnosis (visual inspection) is not included and remains essential for a complete TCM diagnosis.${polsSentence} If in doubt or with serious complaints, always consult a doctor or licensed TCM therapist.`,
@@ -134,7 +187,14 @@ const STRINGS_BY_LANG = {
     compareNew:"new",
     allDone:"All questions have been answered. Here's my overview of the TCM patterns emerging from your answers:",
     noPatterns:"No specific patterns emerged from the given answers — possibly many questions were skipped, or this points to a largely balanced picture. Consider going through the intake again with more specific answers, or supplement with tongue and pulse diagnosis.",
-    reportTitle:"Summary report", evidenceToggle:"Show reasoning",
+    reportTitle:"TCM Educational Pattern Summary", evidenceToggle:"Show reasoning",
+    intendedUseStatement:"Important: Yushin is intended solely as educational and informational reference software within the context of Traditional Chinese Medicine and Japanese acupuncture. The application structures the information you enter and presents traditional pattern relationships, theory, meridian connections and reference information based on predefined rules. Yushin does not provide a medical diagnosis, does not perform medical screening or emergency triage, does not predict disease, and does not determine, advise on, or optimize medical or therapeutic treatment. This information does not replace your own professional assessment and competence, and you remain solely responsible for the interpretation and for any decision or action taken outside of Yushin.",
+    intendedUseFooter:"Yushin: educational/informational reference software for TCM & Japanese acupuncture. No medical diagnosis, screening, triage, or treatment advice.",
+    // therapyPlanPoints/Lifestyle/Unmatched hadden nog geen en-versie (vielen
+    // terug op de nl-tekst via t()'s fallback) — hier alsnog toegevoegd,
+    // met dezelfde niet-prescriptieve taal als de nl-versie (taak #111).
+    therapyPlanPoints:"Traditional reference points", therapyPlanLifestyle:"Lifestyle/diet (traditional info)",
+    therapyPlanUnmatched:(n)=>`For ${n} of the recognized patterns, no traditional reference information is (yet) available — these have been deliberately omitted here.`,
     clockCardTitle:"Organ clock — your points of attention",
     clockNoteHas:"The orange segments are the times at which you reported complaints — according to the organ clock, that organ/meridian is extra active at that time.",
     clockNoteNone:"No pronounced time-related complaints emerged — the organ clock below serves as a reference.",
@@ -202,12 +262,17 @@ const STRINGS_BY_LANG = {
     compareNew:"nouveau",
     allDone:"Toutes les questions ont été parcourues. Voici mon aperçu des patterns MTC qui ressortent des réponses :",
     noPatterns:"Aucun pattern spécifique n'est ressorti des réponses données — peut-être beaucoup de questions ont-elles été passées, ou cela indique un tableau globalement équilibré. Envisagez de refaire l'anamnèse avec des réponses plus spécifiques, ou complétez avec le diagnostic de la langue et du pouls.",
-    reportTitle:"Rapport de synthèse", evidenceToggle:"Afficher la justification",
+    reportTitle:"Résumé éducatif des patterns MTC", evidenceToggle:"Afficher la justification",
+    // fr is nog niet volledig nagekeken (taak #40) — deze zin is een
+    // ongeverifieerde vertaling, enkel toegevoegd zodat de lookup-tabel
+    // symmetrisch blijft (AVAILABLE_LANGS biedt fr vooralsnog niet aan).
+    intendedUseStatement:"Important : Yushin est exclusivement destiné à être un logiciel de référence éducatif et informatif dans le contexte de la médecine traditionnelle chinoise et de l'acupuncture japonaise. L'application structure les informations que vous saisissez et présente des relations de patterns traditionnels, de la théorie, des liens méridiens et des informations de référence sur la base de règles prédéfinies. Yushin ne pose pas de diagnostic médical, n'effectue pas de dépistage médical ni de triage d'urgence, ne prédit pas de maladie, et ne détermine, ne conseille ni n'optimise aucun traitement médical ou thérapeutique. Ces informations ne remplacent pas votre propre évaluation professionnelle et vous restez seul responsable de l'interprétation et de toute décision ou action prise en dehors de Yushin.",
+    intendedUseFooter:"Yushin : logiciel de référence éducatif/informatif pour la MTC et l'acupuncture japonaise. Aucun diagnostic médical, dépistage, triage ou conseil de traitement.",
     clockCardTitle:"Horloge des organes — vos points d'attention",
     clockNoteHas:"Les segments orange sont les horaires auxquels vous avez signalé des plaintes — selon l'horloge des organes, cet organe/méridien est particulièrement actif à ce moment-là.",
     clockNoteNone:"Aucune plainte liée à un horaire précis n'est ressortie — l'horloge des organes ci-dessous sert de référence.",
     conclusion:(top,second)=>`Conclusion provisoire (hypothèse de travail) : le tableau oriente le plus vers « ${top} »` + (second ? `, possiblement combiné à « ${second} ».` : "."),
-    printBrandSub:"Assistante IA d'anamnèse MTC", printProtocolPill:"Protocole « 10+2 questions »",
+    printBrandSub:"Assistante IA d'anamnèse MTC", printProtocolPill:"Protocole «\\u00a010+2 questions\\u00a0»",
     printTitleSimplified:"Votre résumé personnel", printTitleFull:"Rapport de synthèse — anamnèse MTC",
     printNoPatterns:"Aucun pattern spécifique n'est ressorti des réponses données.",
     printWhatCameUp:"Qu'est-ce qui est ressorti ?",
