@@ -20,12 +20,12 @@
 (function () {
   "use strict";
 
-  // Het echte Yushin-embleem (zilveren drakengolf met gouden acupunctuurnaald),
-  // verbatim overgenomen uit de oorspronkelijke client-side tool
-  // (tcm_10plus2_chatbot.html, MEI_AVATAR_DATAURL, taak #64-rebrand). Bewust
-  // als data-URL ingebed i.p.v. apart bestand: GitHubs webeditor/upload-flow
-  // in deze sessie ondersteunt geen losse binaire bestanden, enkel tekst.
-  const LOGO_DATAURL = "yushin-logo-128.webp"; // fix: was een embedded base64 data-URL die op GitHub Pages niet betrouwbaar laadde; nu een gewoon statisch bestand.
+  // Het echte Yushin-embleem (zilveren drakengolf met gouden acupunctuurnaald).
+  // Voorheen als een grote base64 data-URL ingebed in deze file — dat bleek
+  // op de live GitHub Pages-site niet altijd betrouwbaar te laden (broken
+  // image). Nu een gewoon statisch bestand (yushin-logo-128.webp, meegecommit
+  // in de root van deze repo naast index.html), betrouwbaarder en kleiner.
+  const LOGO_DATAURL = "yushin-logo-128.webp";
 
   const API_BASE_KEY = "yushin_api_base";
   const TOKEN_KEY = "yushin_token";
@@ -40,6 +40,11 @@
   let authMode = "login";
   let authError = "";
   let authBusy = false;
+  // Verplicht akkoordvakje bij registratie (03/09, launch-blocker) — enkel
+  // relevant zolang authMode === "register"; bij het wisselen tussen
+  // login/registreren wordt dit teruggezet (zie de switchToRegister/
+  // switchToLogin-knop in renderAuth()).
+  let agreedToTerms = false;
 
   let introStep = "lang";
   let context = { role: null, female: null, pediatric: null };
@@ -142,6 +147,11 @@
   let screenBeforeBilling = "intro";
   let billingBusy = false;
   let billingError = "";
+
+  // Referenties-sectie (placeholder, 03/09) — enkel de navigatie/het scherm
+  // zelf, zie renderReferences() verderop. Geen eigen data-ophaling: de
+  // inhoud wordt in een latere taak toegevoegd.
+  let screenBeforeReferences = "intro";
   // "monthly" of "yearly" — kiest enkel welke kaarten getoond worden, de
   // uiteindelijke plan-sleutel (bv. "solo_yearly") die naar de server gaat
   // hangt hiervan af (zie PLAN_CATALOG hieronder).
@@ -164,6 +174,18 @@
   // poort actief is).
   function isAccessBlocked() {
     return Boolean(token && currentUser && orgInfo && orgInfo.subscriptionStatus === "trialing");
+  }
+
+  // Patiënt-vergrendeling (03/09) — zolang een patiënt zelf de vragenlijst
+  // invult (context.role === "patient", gekozen bij "Wie vult deze anamnese
+  // in?") mag de bovenbalk geen praktijk-/beheerknoppen tonen: het toestel
+  // blijft ingelogd als de therapeut/eigenaar, dus zonder deze check zou een
+  // patiënt via de balk naar Team beheren, Abonnement of Referenties kunnen
+  // klikken terwijl hij het toestel even vasthoudt. Enkel relevant tijdens
+  // het invullen/bekijken van de anamnese zelf (interview/results) — op elk
+  // ander scherm is er sowieso geen patiënt aan het toestel.
+  function isPatientFilling() {
+    return context.role === "patient" && (screen === "interview" || screen === "results");
   }
 
   // Kleine, eigen UI-stringtabel voor de NIEUWE schermen (login/registreren)
@@ -206,6 +228,16 @@
       registerBtn: "Praktijk registreren",
       switchToRegister: "Nog geen account? Registreer je praktijk",
       switchToLogin: "Al een account? Log in",
+      // Verplicht akkoordvakje bij registratie (03/09) — link naar de
+      // schone, klantgerichte privacy.html/terms.html (naast index.html in
+      // client/). Vervangt géén jurist-review, zie de bestaande interne
+      // masterdossiers; dit is puur het UI-blokje dat registratie
+      // tegenhoudt zolang niet aangevinkt.
+      agreeToTermsPrefix: "Ik ga akkoord met de ",
+      agreeToTermsLink: "gebruiksvoorwaarden",
+      agreeToTermsAnd: " en de ",
+      agreeToPrivacyLink: "privacyverklaring",
+      agreeToTermsRequired: "Je moet akkoord gaan met de voorwaarden en de privacyverklaring om te registreren.",
       logout: "Uitloggen",
       apiUrlLabel: "Server-adres (API)",
       newSession: "Nieuwe anamnese starten",
@@ -289,6 +321,14 @@
         `Kortingscode toegepast: ${percent}% korting wordt automatisch verrekend bij het afrekenen hieronder.`,
       lockedMessage:
         "Deze praktijk heeft nog geen toegang tot Yushin. Neem contact op met de praktijkbeheerder om een abonnement te kiezen of een toegangscode in te voeren.",
+
+      // Referenties-sectie (placeholder) — 03/09: enkel de sectie zelf
+      // aangemaakt, de effectieve inhoud (klassieke bronteksten, zie de
+      // ontwerp-prototype) wordt in een latere taak overgezet.
+      referencesNavBtn: "Referenties",
+      referencesTitle: "Referenties",
+      referencesPlaceholder:
+        "Deze sectie is in ontwikkeling. Klassieke bronteksten en canonieke referentie-informatie worden hier binnenkort toegevoegd.",
     },
     en: {
       appTitle: "Yushin",
@@ -313,6 +353,11 @@
       registerBtn: "Register practice",
       switchToRegister: "No account yet? Register your practice",
       switchToLogin: "Already have an account? Log in",
+      agreeToTermsPrefix: "I agree to the ",
+      agreeToTermsLink: "terms of service",
+      agreeToTermsAnd: " and the ",
+      agreeToPrivacyLink: "privacy policy",
+      agreeToTermsRequired: "You must agree to the terms of service and privacy policy to register.",
       logout: "Log out",
       apiUrlLabel: "Server address (API)",
       newSession: "Start new intake",
@@ -390,6 +435,11 @@
         `Discount code applied: ${percent}% off will be applied automatically at checkout below.`,
       lockedMessage:
         "This practice doesn't have access to Yushin yet. Contact your practice owner to choose a subscription or enter an access code.",
+
+      referencesNavBtn: "References",
+      referencesTitle: "References",
+      referencesPlaceholder:
+        "This section is in development. Classical source texts and canonical reference information will be added here soon.",
     },
   };
   function ui(key) {
@@ -518,6 +568,7 @@
     else if (screen === "results") body = renderResults();
     else if (screen === "admin") body = renderAdmin();
     else if (screen === "billing") body = renderBilling();
+    else if (screen === "references") body = renderReferences();
     root.appendChild(body);
 
     // Red-flag / safety-laag (Spoor 1.4, taak #105) — bewust NA de rest van
@@ -646,9 +697,9 @@
           el("span", {
             class: "lang-btn",
             text: ui("trialBadge"),
-            title: currentUser.role === "owner" ? ui("billingNavBtn") : undefined,
+            title: currentUser.role === "owner" && !isPatientFilling() ? ui("billingNavBtn") : undefined,
             onclick:
-              currentUser.role === "owner" && screen !== "billing"
+              currentUser.role === "owner" && screen !== "billing" && !isPatientFilling()
                 ? () => {
                     screenBeforeBilling = screen;
                     screen = "billing";
@@ -681,9 +732,22 @@
             },
           })
         );
-      } else if (currentUser.role === "owner" && screen !== "auth") {
+      } else if (screen === "references") {
+        bar.appendChild(
+          el("button", {
+            class: "btn btn-ghost",
+            text: ui("backToApp"),
+            onclick: () => {
+              screen = screenBeforeReferences || "intro";
+              render();
+            },
+          })
+        );
+      } else if (currentUser.role === "owner" && screen !== "auth" && !isPatientFilling()) {
         // Beheerpaneel (taak #73) — enkel voor de praktijkeigenaar, en enkel
         // zinvol als er al ingelogd/gekozen is (niet op het auth-scherm).
+        // Taak "patiënt-vergrendeling" (03/09): ook verborgen zolang een
+        // patiënt zelf de vragenlijst invult, zie isPatientFilling() hierboven.
         bar.appendChild(
           el("button", {
             class: "btn btn-ghost",
@@ -712,6 +776,31 @@
             })
           );
         }
+      }
+
+      // Referenties-knop (placeholder, 03/09) — bewust NIET owner-only:
+      // beide rollen (owner/therapist) mogen dit later zien, in
+      // tegenstelling tot Team beheren/Abonnement die owner-only blijven.
+      // Verborgen op de schermen die zelf al een "Terug"-knop tonen, en
+      // zolang de toegangspoort actief is (zelfde reden als Team beheren).
+      if (
+        screen !== "admin" &&
+        screen !== "billing" &&
+        screen !== "references" &&
+        !isAccessBlocked() &&
+        !isPatientFilling()
+      ) {
+        bar.appendChild(
+          el("button", {
+            class: "btn btn-ghost",
+            text: ui("referencesNavBtn"),
+            onclick: () => {
+              screenBeforeReferences = screen;
+              screen = "references";
+              render();
+            },
+          })
+        );
       }
 
       // Automatische demo-invulknop (taak #90) — bewust enkel zichtbaar op
@@ -806,6 +895,45 @@
     }
     form.appendChild(field("email", ui("email"), "email"));
     form.appendChild(field("password", ui("password"), "password"));
+    // Verplicht akkoordvakje (03/09, launch-blocker) — enkel bij registratie
+    // getoond; login-gebruikers hebben dit al bij hun eerdere registratie
+    // aanvaard. De links openen privacy.html/terms.html (of de Engelse
+    // varianten privacy-en.html/terms-en.html, afhankelijk van de huidige
+    // `lang`, naast index.html) in een nieuw tabblad, zodat het
+    // registratieformulier niet verloren gaat. doRegister() blokkeert de
+    // submit hard zolang niet aangevinkt — zie de check daar.
+    if (authMode === "register") {
+      form.appendChild(
+        el("div", { class: "field agree-terms-field" }, [
+          el("label", { class: "agree-terms-label" }, [
+            el("input", {
+              type: "checkbox",
+              name: "agreeToTerms",
+              checked: agreedToTerms ? "checked" : undefined,
+              onchange: (e) => {
+                agreedToTerms = e.target.checked;
+              },
+            }),
+            el("span", {}, [
+              ui("agreeToTermsPrefix"),
+              el("a", {
+                href: lang === "en" ? "terms-en.html" : "terms.html",
+                target: "_blank",
+                rel: "noopener",
+                text: ui("agreeToTermsLink"),
+              }),
+              ui("agreeToTermsAnd"),
+              el("a", {
+                href: lang === "en" ? "privacy-en.html" : "privacy.html",
+                target: "_blank",
+                rel: "noopener",
+                text: ui("agreeToPrivacyLink"),
+              }),
+            ]),
+          ]),
+        ])
+      );
+    }
     form.appendChild(
       el("button", {
         class: "btn btn-primary",
@@ -823,6 +951,7 @@
         onclick: () => {
           authMode = authMode === "login" ? "register" : "login";
           authError = "";
+          agreedToTerms = false;
           render();
         },
       })
@@ -913,6 +1042,15 @@
   }
 
   async function doRegister(form) {
+    // Launch-blocker (03/09): registratie hard tegenhouden zolang het
+    // akkoordvakje niet is aangevinkt — dit is de enige server-onafhankelijke
+    // plek waar we dit kunnen afdwingen; de server zelf slaat geen "akkoord"
+    // op (geen apart consent-veld/-tabel, bewust simpel gehouden voor v1).
+    if (!agreedToTerms) {
+      authError = ui("agreeToTermsRequired");
+      render();
+      return;
+    }
     authBusy = true;
     authError = "";
     render();
@@ -1608,8 +1746,18 @@
 
     let guard = 0;
     while (screen === "interview" && currentQuestion && guard++ < 200) {
+      // Bugfix (na klantfeedback): niet blindelings options[0] kiezen. De
+      // veiligheidscontrole (sectie s0safety, taak #104) heeft per vraag als
+      // EERSTE optie steeds het ernstigste NOODSIGNAAL-antwoord staan (bv.
+      // "Plotse verlamming, spraakverlies of scheve mond"), dus options[0]
+      // triggerde tijdens de demo-autofill gegarandeerd meteen een
+      // blokkerende hard-redFlag-melding. We kiezen daarom de eerste optie
+      // ZONDER redFlag-koppeling (voor de veiligheidsvragen is dat steeds
+      // "Geen van deze"); voor alle overige, normale vragen (die geen enkele
+      // optie met .redFlag hebben) blijft dit gewoon options[0], identiek
+      // aan het oude gedrag.
       const opts = currentQuestion.question.options;
-      const opt = opts.find((o) => !o.redFlag) || opts[0]; // fix: sla NOODSIGNAAL-opties over tijdens auto-demo
+      const opt = opts.find((o) => !o.redFlag) || opts[0];
       await chooseOption(opt.index);
     }
 
@@ -1880,6 +2028,18 @@
 
     wrap.appendChild(el("p", { class: "muted billing-education-note", text: ui("billingEducationNote") }));
 
+    return wrap;
+  }
+
+  // --- Scherm: referenties (placeholder, 03/09) ---------------------------
+  // Enkel de sectie zelf: geen data-ophaling, geen inhoud. De klassieke
+  // bronteksten (Huangdi Neijing/Nanjing, al goedgekeurd en uitgewerkt in de
+  // ontwerp-prototype yushin-app-shell-prototype.html) worden in een latere
+  // taak effectief overgezet naar hier.
+  function renderReferences() {
+    const wrap = el("div", { class: "card" });
+    wrap.appendChild(el("h2", { text: ui("referencesTitle") }));
+    wrap.appendChild(el("p", { class: "muted", text: ui("referencesPlaceholder") }));
     return wrap;
   }
 
