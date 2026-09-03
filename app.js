@@ -209,15 +209,6 @@
       heroTitle: "Yushin — educatief patroonoverzicht voor TCM & Japanse acupunctuur",
       heroDescription:
         "Yushin is een educatieve en informatieve softwaretoepassing voor professionele TCM-/acupunctuurbeoefenaars: het begeleidt je (of je patiënt) stap voor stap door een vaste vragenlijst van 78 vragen en toont automatisch een overzicht van traditionele patroonrelaties, een orgaanklok-overzicht en bijpassende traditionele referentie-informatie. Yushin stelt geen diagnose en bepaalt geen behandeling — de interpretatie en beoordeling blijven bij jou. Log in of registreer je praktijk om te starten.",
-      // Spoor 2.3 — "coming soon"-sectie (beslissing Danny: wel al tonen).
-      comingSoonTitle: "Binnenkort beschikbaar",
-      comingSoonIntro: "Yushin Core is het eerste onderdeel van een groeiend platform. Deze modules zijn in ontwikkeling:",
-      comingSoonItems: [
-        "Meridian — meridiaan- en acupunctuurpuntanalyse",
-        "Jing Jin — peesspierkanalen (Jing Jin) diagnostiek",
-        "Japanese — Japanse acupunctuurstijlen (o.a. Toyohari, meridiaantherapie)",
-        "Classical — klassieke bronteksten en canonieke syndroomdifferentiatie",
-      ],
       loginTitle: "Inloggen",
       registerTitle: "Nieuwe praktijk registreren",
       email: "E-mailadres",
@@ -335,14 +326,6 @@
       heroTitle: "Yushin — educational pattern overview for TCM & Japanese acupuncture",
       heroDescription:
         "Yushin is an educational and informational software application for professional TCM/acupuncture practitioners: it guides you (or your patient) step by step through a fixed 78-question intake and automatically shows an overview of traditional pattern relationships, an organ-clock overview, and matching traditional reference information. Yushin does not provide a diagnosis and does not determine treatment — interpretation and assessment remain yours. Log in or register your practice to get started.",
-      comingSoonTitle: "Coming soon",
-      comingSoonIntro: "Yushin Core is the first part of a growing platform. These modules are in development:",
-      comingSoonItems: [
-        "Meridian — meridian and acupuncture point analysis",
-        "Jing Jin — sinew-channel (Jing Jin) diagnostics",
-        "Japanese — Japanese acupuncture styles (incl. Toyohari, Meridian Therapy)",
-        "Classical — classical source texts and canonical pattern differentiation",
-      ],
       loginTitle: "Log in",
       registerTitle: "Register a new practice",
       email: "Email address",
@@ -840,20 +823,6 @@
     hero.appendChild(el("img", { class: "hero-logo", src: LOGO_DATAURL, alt: "Yushin logo" }));
     hero.appendChild(el("h1", { class: "hero-title", text: ui("heroTitle") }));
     hero.appendChild(el("p", { class: "hero-description", text: ui("heroDescription") }));
-
-    // Spoor 2.3 (Verbeterplan) — "coming soon"-sectie voor toekomstige
-    // modules. Bewust enkel een naam+korte omschrijving, geen datums of
-    // beloftes over wanneer iets klaar is — dat zou weer een verwachting
-    // scheppen die niet hard gemaakt kan worden.
-    const comingSoon = el("div", { class: "coming-soon" });
-    comingSoon.appendChild(el("h2", { class: "coming-soon-title", text: ui("comingSoonTitle") }));
-    comingSoon.appendChild(el("p", { class: "coming-soon-intro", text: ui("comingSoonIntro") }));
-    const list = el("ul", { class: "coming-soon-list" });
-    (ui("comingSoonItems") || []).forEach((item) => {
-      list.appendChild(el("li", { text: item }));
-    });
-    comingSoon.appendChild(list);
-    hero.appendChild(comingSoon);
 
     return hero;
   }
