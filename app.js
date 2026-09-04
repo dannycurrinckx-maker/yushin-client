@@ -243,6 +243,7 @@
       connectionError:
         "Kan de server niet bereiken. Controleer het server-adres hierboven (de Worker moet lokaal draaien via 'npm run dev', of gedeployed zijn).",
       manageTeam: "Team beheren",
+      sessionDashboardNavBtn: "Sessiedashboard",
       backToApp: "← Terug",
       teamTitle: "Team beheren",
       teamMembersTitle: "Leden",
@@ -355,6 +356,7 @@
       connectionError:
         "Could not reach the server. Check the server address above (the Worker must be running locally via 'npm run dev', or deployed).",
       manageTeam: "Manage team",
+      sessionDashboardNavBtn: "Session dashboard",
       backToApp: "← Back",
       teamTitle: "Manage team",
       teamMembersTitle: "Members",
@@ -759,6 +761,34 @@
             })
           );
         }
+      }
+
+      // Sessiedashboard (taak #127) — link naar de nieuwe, aparte
+      // dashboard.html (sessielijst + patroonoverzicht/rationale/
+      // therapieplan per sessie, taak "app-shell koppelen aan live
+      // sessiedata"). Bewust een gewone <a>-link i.p.v. een screen-state in
+      // deze SPA: dashboard.html hergebruikt gewoon dezelfde yushin_token/
+      // yushin_api_base/yushin_user uit localStorage (zelfde patroon als de
+      // demo-account-detectie hieronder), dus geen nieuwe loginflow nodig.
+      // Zichtbaar voor elke ingelogde gebruiker (niet owner-only, in
+      // tegenstelling tot Team beheren/Abonnement): elke therapeut mag zijn
+      // eigen sessiegeschiedenis terugzien, net als handleListSessions dat
+      // server-side ook al per-therapeut scoped. Verborgen op dezelfde
+      // schermen/gate-toestanden als de Referenties-knop hierboven.
+      if (
+        screen !== "admin" &&
+        screen !== "billing" &&
+        screen !== "references" &&
+        !isAccessBlocked() &&
+        !isPatientFilling()
+      ) {
+        bar.appendChild(
+          el("a", {
+            class: "btn btn-ghost",
+            href: "dashboard.html",
+            text: ui("sessionDashboardNavBtn"),
+          })
+        );
       }
 
       // Referenties-knop (placeholder, 03/09) — bewust NIET owner-only:

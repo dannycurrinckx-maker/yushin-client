@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Yushin — Sessiedashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a1220;
+    --bg-2: #0c1626;
+    --panel: #101c31;
+    --panel-border: rgba(255, 255, 255, 0.07);
+    --text: #edf1f7;
+    --text-muted: #8fa0ba;
+    --text-faint: #66768f;
+    --gold: #d9a75b;
+    --gold-light: #f0cd94;
+    --gold-dim: rgba(217, 167, 91, 0.15);
+    --green: #4fae82;
+    --red: #d9705b;
+    --track: rgba(255, 255, 255, 0.08);
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: radial-gradient(circle at 15% -10%, #142238 0%, var(--bg) 45%) fixed;
+    color: var(--text);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  button { font-family: inherit; cursor: pointer; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; max-width: 1400px; margin: 0 auto; }
+
+  .sidebar { background: var(--bg-2); border-right: 1px solid var(--panel-border); padding: 26px 20px; display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 28px 6px; }
+  .brand-mark { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--gold); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .brand-mark svg { width: 18px; height: 18px; }
+  .brand-name { font-family: "Playfair Display", serif; font-weight: 700; font-size: 20px; letter-spacing: 0.06em; }
+
+  nav.nav-list { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; }
+  .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; color: var(--text-muted); font-weight: 500; border-left: 2px solid transparent; background: none; border-top: none; border-right: none; border-bottom: none; width: 100%; text-align: left; font-size: 14px; }
+  .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .nav-item.active { background: var(--gold-dim); color: var(--gold-light); border-left-color: var(--gold); }
+  .sidebar-spacer { flex: 1; }
+  .back-to-app { display: block; margin-top: 18px; font-size: 12.5px; color: var(--text-faint); text-decoration: none; }
+  .back-to-app:hover { color: var(--text-muted); }
+
+  .main { display: flex; flex-direction: column; min-width: 0; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 22px 36px; }
+  .back-link { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-weight: 500; background: none; border: none; font-size: 14px; padding: 0; }
+  .back-link svg { width: 16px; height: 16px; }
+  .back-link.is-hidden { visibility: hidden; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--gold); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--gold-light); }
+
+  .content { padding: 4px 36px 48px; }
+  .page { display: none; }
+  .page.page-active { display: block; }
+
+  .page-header { margin-bottom: 22px; }
+  .page-title { font-family: "Playfair Display", serif; font-size: 28px; font-weight: 600; margin: 4px 0 6px; }
+  .page-subtitle { color: var(--text-muted); font-size: 13px; }
+  .page-subtitle .dot { margin: 0 8px; opacity: .5; }
+
+  .card { background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius); padding: 22px 24px; margin-bottom: 20px; }
+  .card-title { font-family: "Playfair Display", serif; font-size: 17px; font-weight: 600; margin-bottom: 14px; }
+
+  .session-row { display: flex; align-items: center; gap: 14px; padding: 13px 6px; border-bottom: 1px solid rgba(255,255,255,.05); cursor: pointer; background: none; border-left: none; border-right: none; border-top: none; width: 100%; text-align: left; color: var(--text); font-family: inherit; }
+  .session-row:last-child { border-bottom: none; }
+  .session-row:hover { background: rgba(255,255,255,.02); }
+  .session-row-label { flex: 1; font-weight: 500; }
+  .session-row-meta { font-size: 12px; color: var(--text-faint); white-space: nowrap; }
+  .session-row-chev { width: 15px; height: 15px; color: var(--text-faint); flex-shrink: 0; }
+  .role-pill { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: .03em; background: rgba(255,255,255,.06); color: var(--text-muted); white-space: nowrap; }
+
+  .pattern-list { display: flex; flex-direction: column; gap: 16px; }
+  .pattern-row-top { display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; margin-bottom: 7px; gap: 10px; }
+  .pattern-name { font-weight: 500; }
+  .pattern-count { color: var(--gold-light); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pattern-track { height: 7px; border-radius: 20px; background: var(--track); overflow: hidden; }
+  .pattern-fill { height: 100%; border-radius: 20px; background: linear-gradient(90deg, #b9843d, var(--gold-light)); }
+  .pattern-confidence { font-size: 12px; color: var(--text-faint); margin-top: 5px; }
+  .pattern-evidence { margin-top: 6px; font-size: 12.5px; color: var(--text-muted); }
+  .pattern-evidence summary { cursor: pointer; color: var(--gold-light); }
+  .pattern-evidence ul { margin: 6px 0 0; padding-left: 18px; }
+
+  .notice-box { display: flex; gap: 12px; background: rgba(217,167,91,.08); border: 1px solid rgba(217,167,91,.3); border-radius: 12px; padding: 14px 16px; font-size: 13px; color: var(--gold-light); line-height: 1.55; margin-bottom: 20px; }
+  .conclusion-text { font-size: 14.5px; font-style: italic; color: var(--text); margin: 0 0 18px; }
+  .contradiction-item { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 13px; }
+  .contradiction-item:last-child { border-bottom: none; }
+  .contradiction-item strong { display: block; margin-bottom: 3px; }
+  .contradiction-item span { color: var(--text-muted); }
+  .contradiction-note { font-size: 12px; color: var(--text-faint); margin-top: 10px; }
+
+  .clock-wrap { display: flex; justify-content: center; margin: 6px 0 12px; }
+  .clock-note { font-size: 12.5px; color: var(--text-muted); text-align: center; }
+
+  .empty-state, .loading-state, .error-state { padding: 40px 20px; text-align: center; color: var(--text-muted); }
+  .error-state { color: var(--red); }
+  .login-gate { max-width: 420px; margin: 80px auto; text-align: center; }
+  .login-gate a { color: var(--gold-light); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#d9a75b" stroke-width="1.6"><path d="M12 3a9 9 0 1 0 6.5 15.2"/><path d="M12 7a5 5 0 1 0 3.8 8.6"/><line x1="12" y1="3" x2="12" y2="7"/></svg></div>
+      <div class="brand-name">YUSHIN</div>
+    </div>
+    <nav class="nav-list">
+      <button class="nav-item active" data-page="list">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
+        Sessies
+      </button>
+    </nav>
+    <div class="sidebar-spacer"></div>
+    <a class="back-to-app" href="index.html">← Naar hoofdapp (nieuwe intake, team, abonnement)</a>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="back-link is-hidden" id="backLink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Overzicht</button>
+      <div style="flex:1"></div>
+      <div class="avatar" id="avatarInitials">–</div>
+    </header>
+
+    <div class="content">
+      <div id="loginGate" style="display:none">
+        <div class="login-gate">
+          <p>Je bent niet ingelogd (of je sessie is verlopen).</p>
+          <p><a href="index.html">Ga naar de hoofdapp om in te loggen</a> — dit dashboard hergebruikt daarna automatisch die sessie.</p>
+        </div>
+      </div>
+
+      <section class="page page-active" data-page="list" id="pageList">
+        <div class="page-header">
+          <div class="page-title">Sessies</div>
+          <div class="page-subtitle">Al je afgeronde patiëntsessies, meest recent eerst.</div>
+        </div>
+        <div class="card">
+          <div id="sessionListBox"><div class="loading-state">Bezig met laden…</div></div>
+        </div>
+      </section>
+
+      <section class="page" data-page="detail" id="pageDetail">
+        <div class="page-header">
+          <div class="page-title" id="detailTitle">Sessiedetail</div>
+          <div class="page-subtitle" id="detailSubtitle"></div>
+        </div>
+        <div id="detailBox"><div class="loading-state">Bezig met laden…</div></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="strings.js"></script>
+<script src="organClock.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>
