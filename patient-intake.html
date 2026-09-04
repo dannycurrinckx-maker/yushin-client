@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yushin — Anamnese</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app"></div>
+
+<!-- Wachtkamer-QR-intake (taak #134) — losstaande, publieke pagina zonder
+     login. Hergebruikt bewust dezelfde strings.js/organClock.js/styles.css
+     als de hoofdapp (index.html) voor consistente inhoud en huisstijl, maar
+     draait op eigen, nieuwe logica (patient-intake.js) die praat met de
+     PUBLIEKE /api/public/intake/*-routes i.p.v. de Bearer-geauthenticeerde
+     /api/flow/*-routes. Zie src/routes/patientIntake.js voor het volledige
+     beveiligingsmodel. -->
+<script src="strings.js"></script>
+<script src="organClock.js"></script>
+<script src="patient-intake.js"></script>
+</body>
+</html>

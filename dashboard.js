@@ -62,8 +62,9 @@
     }
   }
 
-  async function apiGet(path) {
+  async function apiRequest(method, path) {
     const res = await fetch(apiBase + path, {
+      method,
       headers: { Authorization: "Bearer " + token },
     });
     if (res.status === 401) {
@@ -75,6 +76,16 @@
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || ("Serverfout (" + res.status + ")"));
     return data;
+  }
+
+  function apiGet(path) {
+    return apiRequest("GET", path);
+  }
+  function apiPost(path) {
+    return apiRequest("POST", path);
+  }
+  function apiDelete(path) {
+    return apiRequest("DELETE", path);
   }
 
   function showLoginGate() {
@@ -280,6 +291,145 @@
     }
   }
 
+  // --- Wachtkamer-QR (taak #134) -------------------------------------------
+  //
+  // Beheert het EIGEN deelbare patient_intake_token van de ingelogde
+  // therapeut via de al geteste GET/POST/DELETE /api/patient-intake/token.
+  // De QR-code zelf wordt volledig lokaal in de browser gegenereerd (via
+  // qrcode-generator, cdnjs) uit de publieke link — er wordt bewust GEEN
+  // externe "QR-als-afbeelding"-dienst gebruikt, want die zou het token via
+  // de aanroep-URL aan een derde partij lekken.
+
+  // patient-intake.html staat in dezelfde map als dashboard.html (client/),
+  // dus een relatieve resolve t.o.v. de huidige locatie werkt zowel lokaal
+  // als op GitHub Pages, ongeacht of het pad een submap is.
+  function buildPublicIntakeUrl(patientToken) {
+    const url = new URL("patient-intake.html", window.location.href);
+    url.search = "?t=" + encodeURIComponent(patientToken);
+    return url.toString();
+  }
+
+  function renderQrCodeSvg(container, text) {
+    container.innerHTML = "";
+    if (typeof qrcode !== "function") {
+      container.appendChild(
+        el("div", { class: "error-state", text: "QR-bibliotheek kon niet geladen worden." })
+      );
+      return;
+    }
+    // Type 0 = automatische, kleinst passende versie voor deze linklengte.
+    const qr = qrcode(0, "M");
+    qr.addData(text);
+    qr.make();
+    // Vaste cellSize (i.p.v. het {scalable:true}-opties-object, dat niet in
+    // elke gepubliceerde versie van deze bibliotheek bestaat): de CSS-regel
+    // ".qr-code-box svg" hierboven dwingt sowieso de uiteindelijke
+    // weergavegrootte af, ongeacht de eigen width/height van deze SVG.
+    container.innerHTML = qr.createSvgTag(4);
+  }
+
+  function renderQrEmptyState(box) {
+    box.innerHTML = "";
+    box.appendChild(
+      el("div", { class: "qr-empty-state" }, [
+        el("p", {
+          class: "qr-hint",
+          text:
+            "Je hebt nog geen wachtkamer-QR-code. Genereer er één, hang de code op (of deel de link), en elke patiënt die scant vult zelf de anamnese in op zijn eigen toestel — het resultaat verschijnt nadien hier bij Sessies.",
+        }),
+        el("div", { class: "btn-row" }, [
+          el("button", { class: "btn btn-primary", onclick: handleGenerateToken, text: "QR-code genereren" }),
+        ]),
+      ])
+    );
+  }
+
+  function renderQrActive(box, patientToken) {
+    box.innerHTML = "";
+    const link = buildPublicIntakeUrl(patientToken);
+
+    const qrCodeBox = el("div", { class: "qr-code-box" });
+    renderQrCodeSvg(qrCodeBox, link);
+
+    const info = el("div", { class: "qr-info" }, [
+      el("p", {
+        class: "qr-hint",
+        text: "Print of toon deze code in de wachtzaal, of stuur de link rechtstreeks door. Iedereen die scant komt in een anonieme intake terecht — nooit bij bestaande sessies van de praktijk.",
+      }),
+      el("div", { class: "link-row" }, [
+        el("input", { class: "link-input", type: "text", value: link, readonly: "readonly" }),
+        el("button", { class: "btn btn-ghost", onclick: () => handleCopyLink(link), text: "Kopieer" }),
+      ]),
+      el("div", { class: "copy-feedback", id: "qrCopyFeedback" }),
+      el("div", { class: "btn-row" }, [
+        el("button", { class: "btn btn-ghost", onclick: handleGenerateToken, text: "Nieuwe QR-code genereren" }),
+        el("button", { class: "btn btn-danger", onclick: handleRevokeToken, text: "QR-code intrekken" }),
+      ]),
+    ]);
+
+    box.appendChild(el("div", { class: "qr-wrap" }, [qrCodeBox, info]));
+  }
+
+  function renderQrPage(patientToken) {
+    const box = document.getElementById("qrBox");
+    if (patientToken) renderQrActive(box, patientToken);
+    else renderQrEmptyState(box);
+  }
+
+  async function loadQrPage() {
+    const box = document.getElementById("qrBox");
+    box.innerHTML = '<div class="loading-state">Bezig met laden…</div>';
+    try {
+      const data = await apiGet("/api/patient-intake/token");
+      renderQrPage(data.token || null);
+    } catch (err) {
+      box.innerHTML = "";
+      box.appendChild(el("div", { class: "error-state", text: "Kon QR-code niet laden: " + err.message }));
+    }
+  }
+
+  async function handleCopyLink(link) {
+    const feedback = document.getElementById("qrCopyFeedback");
+    try {
+      await navigator.clipboard.writeText(link);
+      if (feedback) feedback.textContent = "Link gekopieerd.";
+    } catch (err) {
+      if (feedback) feedback.textContent = "Kopiëren mislukt — selecteer en kopieer de link handmatig.";
+    }
+  }
+
+  async function handleGenerateToken() {
+    const box = document.getElementById("qrBox");
+    // Een bestaande QR-code wordt bij het genereren van een nieuwe stil
+    // ingetrokken (zie migratie 0006/patientIntake.js) — vandaar de
+    // waarschuwing vóór een reeds actieve code wordt vervangen.
+    const alreadyHasOne = box.querySelector(".qr-wrap");
+    if (alreadyHasOne && !confirm("Een nieuwe QR-code maakt de huidige code en link meteen ongeldig. Doorgaan?")) {
+      return;
+    }
+    box.innerHTML = '<div class="loading-state">Bezig met genereren…</div>';
+    try {
+      const data = await apiPost("/api/patient-intake/token");
+      renderQrPage(data.token);
+    } catch (err) {
+      box.innerHTML = "";
+      box.appendChild(el("div", { class: "error-state", text: "Kon QR-code niet genereren: " + err.message }));
+    }
+  }
+
+  async function handleRevokeToken() {
+    if (!confirm("De huidige QR-code en link worden meteen ongeldig. Doorgaan?")) return;
+    const box = document.getElementById("qrBox");
+    box.innerHTML = '<div class="loading-state">Bezig met intrekken…</div>';
+    try {
+      await apiDelete("/api/patient-intake/token");
+      renderQrPage(null);
+    } catch (err) {
+      box.innerHTML = "";
+      box.appendChild(el("div", { class: "error-state", text: "Kon QR-code niet intrekken: " + err.message }));
+    }
+  }
+
   async function openSession(id) {
     showPage("detail");
     document.getElementById("detailBox").innerHTML = '<div class="loading-state">Bezig met laden…</div>';
@@ -295,7 +445,14 @@
   }
 
   document.querySelectorAll(".nav-item").forEach((item) => {
-    item.addEventListener("click", () => showPage(item.dataset.page));
+    item.addEventListener("click", () => {
+      showPage(item.dataset.page);
+      // Telkens opnieuw ophalen (niet enkel bij eerste bezoek): een token
+      // kan intussen elders (ander tabblad/toestel) gewijzigd zijn, en de
+      // aanroep zelf is goedkoop — zelfde afweging als loadSessionList
+      // hieronder, die ook niet cachet.
+      if (item.dataset.page === "qr") loadQrPage();
+    });
   });
   document.getElementById("backLink").addEventListener("click", () => showPage("list"));
 
