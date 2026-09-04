@@ -111,6 +111,26 @@ p { line-height: 1.5; }
 }
 .field input:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
+/* Verplicht akkoordvakje bij registratie (03/09, launch-blocker) — zie
+   renderAuth()/doRegister() in app.js. */
+.agree-terms-field { margin-bottom: 18px; }
+.agree-terms-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.agree-terms-label input[type="checkbox"] {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  flex: none;
+}
+.agree-terms-label a { color: var(--accent); }
+
 .btn {
   border: none;
   border-radius: 8px;
@@ -230,39 +250,6 @@ p { line-height: 1.5; }
   color: var(--muted);
   font-size: 14px;
   line-height: 1.6;
-}
-
-/* Spoor 2.3 (Verbeterplan) — "coming soon"-sectie voor toekomstige modules.
-   Bewust subtiel: kleiner lettertype dan de hero-description, dunne
-   scheidingslijn erboven, zodat het niet concurreert met de eigenlijke
-   login/registratie-call-to-action eronder. */
-.coming-soon {
-  margin: 20px auto 0;
-  max-width: 480px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.12));
-}
-.coming-soon-title {
-  margin: 0 0 4px;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.coming-soon-intro {
-  margin: 0 0 8px;
-  font-size: 12.5px;
-  color: var(--muted);
-  line-height: 1.5;
-}
-.coming-soon-list {
-  margin: 0;
-  padding-left: 18px;
-  font-size: 12.5px;
-  color: var(--muted);
-  line-height: 1.6;
-  text-align: left;
 }
 
 /* Verborgen demo-toegang (taak #87) — bewust klein en onopvallend, niet
