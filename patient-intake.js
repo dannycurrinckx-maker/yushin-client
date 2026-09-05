@@ -300,14 +300,12 @@
     try {
       const data = await api("/api/public/intake/next", "POST", { token, lang, context, answers });
       flowBusy = false;
-      // Taak #134 — redFlags komt van de server hier per definitie altijd
-      // leeg terug (role is server-side hard "patient", zie
-      // buildRedFlagsPayload in flow.js) — er is dus bewust GEEN
-      // veiligheidssignaal-overlay op dit scherm, in tegenstelling tot
-      // app.js's renderInterview(). Dit is een bestaande, elders al
-      // gedocumenteerde beperking van patiënt-zelfinvulsessies (zie de
-      // toelichting bij buildRedFlagsPayload), niet iets dat deze pagina
-      // stilzwijgend anders/beter voordoet.
+      // safetyChecklist komt van de server hier per definitie altijd leeg
+      // terug (role is server-side hard "patient", zie
+      // buildSafetyChecklistPayload in flow.js) — er is dus bewust geen
+      // veiligheidschecklist-toggle op dit scherm, in tegenstelling tot
+      // app.js's renderTopBar(). Dezelfde therapeut-only beperking als
+      // evidence/therapyPlan.
       if (data.done) {
         await fetchResult();
         return;

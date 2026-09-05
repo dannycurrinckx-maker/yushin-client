@@ -243,18 +243,13 @@
       box.appendChild(contraCard);
     }
 
-    if (result.redFlags && result.redFlags.length) {
-      const rfCard = el("div", { class: "card" }, [el("div", { class: "card-title", text: "Veiligheidssignalen" })]);
-      result.redFlags.forEach((f) => {
-        rfCard.appendChild(
-          el("div", { class: "contradiction-item" }, [
-            el("strong", { text: f.label + " (" + f.tier + ")" }),
-            el("span", { text: f.message || "" }),
-          ])
-        );
-      });
-      box.appendChild(rfCard);
-    }
+    // MDR-veilig-lanceren (04/09): de veiligheidschecklist is niet langer
+    // afgeleid van de ingevulde antwoorden van DEZE sessie — elke sessie
+    // krijgt exact dezelfde statische lijst terug (zie flow.js). Een
+    // per-sessie "Veiligheidssignalen"-kaart op het dashboard zou dus
+    // suggereren dat dit sessie-specifiek is, wat niet meer klopt; die kaart
+    // is daarom verwijderd. De statische checklist blijft beschikbaar via het
+    // "⚠️ Veiligheidsinformatie"-paneel in de hoofdapp (app.js), niet hier.
 
     // Therapieplan-voorstel per patroon — reële, door Danny klinisch
     // nagekeken data uit therapyPlanData.js (server stuurt dit al gefilterd
@@ -262,6 +257,13 @@
     // is bewust de vervanging voor het "Rationale"-tabblad met verzonnen
     // tags/tekst uit het ontwerp-prototype: hier staat enkel wat de server
     // ook echt teruggeeft, nooit een eigen samenvattende interpretatie.
+    //
+    // MDR-veilig-lanceren (04/09): de server stuurt per patroon enkel nog
+    // {pattern, mei_zin} mee — punten/kruiden/leefstijl zijn server-side
+    // verwijderd (zie buildResultPayload in flow.js). `m.punten`/`m.leefstijl`
+    // hieronder bestaan dus niet meer in nieuwe sessies; de checks blijven
+    // enkel staan zodat oudere, al opgeslagen sessies (van vóór deze
+    // wijziging) hun destijds bewaarde inhoud nog correct tonen.
     if (result.therapyPlan && result.therapyPlan.matched && result.therapyPlan.matched.length) {
       const tpCard = el("div", { class: "card" }, [
         el("div", { class: "card-title", text: "Therapieplan-voorstel per patroon" }),

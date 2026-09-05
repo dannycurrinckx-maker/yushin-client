@@ -59,21 +59,20 @@
   let resultSessionId = null;
   let patientLabelInput = "";
 
-  // Red-flag / safety-laag (Spoor 1.4, taak #104/#105). `redFlags` komt van
-  // de server (resolveRedFlags-output: [{id, tier:"hard"|"soft", label,
-  // ernstniveau, message}]) en wordt zowel tijdens het interview
-  // (fetchNext) als bij het resultaat (fetchResult) ververst — een
-  // NOODSIGNAAL moet direct na dat antwoord zichtbaar zijn, niet pas na de
-  // resterende vragen (zie toelichting in src/routes/flow.js). `tier`
-  // "hard" (NOODSIGNAAL) blokkeert de hele app tot een nieuwe sessie start
-  // — dat is bewust GEEN dismissible state. `tier` "soft" (ALARM/
-  // WAARSCHUWING) is niet-blokkerend: ackedRedFlagIds houdt bij welke de
-  // therapeut expliciet als "gelezen" heeft aangevinkt (Danny's instructie,
-  // chat 2026-08-26); dit blijft opzettelijk staan over vragen heen binnen
-  // dezelfde sessie (eenmaal gelezen, blijft gelezen), en wordt enkel
-  // gereset bij een nieuwe sessie (zie restartBtn-handler).
-  let redFlags = [];
-  let ackedRedFlagIds = new Set();
+  // Veiligheidschecklist (MDR-veilig-lanceren, 04/09, launch-blocker).
+  // Voorheen ("Spoor 1.4", taak #104/#105) berekende de server dit uit de
+  // ingevulde antwoorden (`redFlags`, met tier "hard"/"soft") en blokkeerde
+  // een tier-"hard"-treffer de hele app tot een nieuwe sessie startte. Dat
+  // is functioneel geautomatiseerde medische triage op patiëntdata — Danny's
+  // beslissing (04/09) was om deze koppeling met `answers` los te maken. De
+  // server geeft nu altijd dezelfde statische, taalbewuste checklist terug
+  // (`safetyChecklist`, zie src/routes/flow.js), ongeacht welke antwoorden
+  // ingevuld zijn. De client toont dit als een niet-blokkerend, altijd
+  // inklapbaar referentiepaneel dat de therapeut zelf raadpleegt — er is
+  // geen enkele koppeling meer met specifieke vragen/antwoorden, dus ook
+  // geen enkele blokkade meer.
+  let safetyChecklist = [];
+  let safetyChecklistOpen = false;
   // Sluitstatus van de Yushin-assistent-pop-up (taak #89) — apart van
   // resultData zodat een klik op het sluitkruisje niet het hele
   // resultaatscherm laat herrenderen zonder de pop-up. Wordt gereset
@@ -90,8 +89,8 @@
   let assistantConversationOpen = false;
   // Welke patroon-titels de therapeut al heeft aangeklikt in de assistent-
   // pop-up (taak #92) — het keuzemenu toont bewust enkel de titels van de
-  // gevonden patronen; de volledige inhoud (mei_zin/punten/leefstijl) van
-  // een patroon verschijnt pas als losse chatbubbel nadat de therapeut
+  // gevonden patronen; de volledige inhoud (enkel nog mei_zin, zie
+  // MDR-veilig-lanceren 04/09) van een patroon verschijnt pas als losse chatbubbel nadat de therapeut
   // expliciet op die titel klikt, i.p.v. alles in één keer te tonen zodra
   // "Ja, toon het voorstel" gekozen is. Bevat indices in
   // therapyPlan.matched; de "overige bevindingen"-notitie wordt apart
@@ -556,98 +555,48 @@
     else if (screen === "references") body = renderReferences();
     root.appendChild(body);
 
-    // Red-flag / safety-laag (Spoor 1.4, taak #105) — bewust NA de rest van
-    // de pagina toegevoegd zodat de blokkerende overlay (tier "hard") er
-    // altijd bovenop ligt (z-index 2000, hoger dan de assistant-popup). Enkel
-    // relevant tijdens interview/results — op andere schermen (auth, intro,
-    // admin) zijn er per definitie nog geen redFlags opgehaald.
-    const flagOverlay = renderRedFlagLayer();
-    if (flagOverlay) root.appendChild(flagOverlay);
+    // Veiligheidschecklist (MDR-veilig-lanceren, 04/09) — puur een
+    // niet-blokkerend, door de therapeut zelf open/dicht te klappen paneel;
+    // GEEN overlay, GEEN blokkade, en niet gekoppeld aan welke vraag of welk
+    // antwoord dan ook. Enkel getoond wanneer er iets in te tonen valt
+    // (server geeft een lege lijst voor de patiëntrol) en wanneer de
+    // therapeut het zelf heeft opengeklapt.
+    if (safetyChecklist.length && safetyChecklistOpen) {
+      root.appendChild(renderSafetyChecklistPanel());
+    }
   }
 
-  // Spoor 1.4 (taak #104/#105). Zie de toelichting bij de state-declaratie
-  // van redFlags/ackedRedFlagIds hierboven voor de twee gedragsniveaus.
-  function renderRedFlagLayer() {
-    if (!redFlags.length) return null;
-    const hardFlags = redFlags.filter((f) => f.tier === "hard");
-    if (hardFlags.length) return renderRedFlagOverlay(hardFlags);
-
-    const unackedSoft = redFlags.filter((f) => f.tier === "soft" && !ackedRedFlagIds.has(f.id));
-    if (!unackedSoft.length) return null;
-    return renderRedFlagBanner(unackedSoft);
-  }
-
-  // Tier "hard" (NOODSIGNAAL) — volledig blokkerende overlay, GEEN
-  // "toch doorgaan"-knop: Danny's expliciete instructie was "noodsignaal is
-  // stop". De enige uitweg is een nieuwe sessie starten (zelfde handler als
-  // de gewone "Opnieuw beginnen"-knop in renderResults).
-  function renderRedFlagOverlay(hardFlags) {
-    const overlay = el("div", { class: "redflag-overlay" });
-    const modal = el("div", { class: "redflag-modal" });
-    modal.appendChild(el("h2", { text: t("redflagModalTitle") }));
-    modal.appendChild(el("p", { text: t("redflagModalIntro") }));
-    hardFlags.forEach((f) => {
-      const item = el("div", { class: "redflag-item" });
+  // MDR-veilig-lanceren (04/09) — vervangt de vroegere blokkerende
+  // NOODSIGNAAL-overlay en de niet-blokkerende ALARM/WAARSCHUWING-banner
+  // (beide berekend uit de ingevulde antwoorden, "Spoor 1.4"). Dit is nu één
+  // enkel, altijd-hetzelfde, niet-blokkerend paneel met de volledige
+  // statische checklist — de therapeut klapt het zelf open (zie de knop in
+  // renderTopBar) en dicht, er wordt niets automatisch getoond of verborgen
+  // op basis van sessie-inhoud.
+  function renderSafetyChecklistPanel() {
+    const panel = el("div", { class: "safety-checklist-panel" });
+    panel.appendChild(el("h3", { text: t("safetyChecklistTitle") }));
+    panel.appendChild(el("p", { class: "muted", text: t("safetyChecklistIntro") }));
+    safetyChecklist.forEach((f) => {
+      const item = el("div", { class: "redflag-item" + (f.tier === "soft" ? " redflag-item-soft" : "") });
       item.appendChild(el("strong", { text: f.label }));
       item.appendChild(el("span", { text: f.message }));
-      modal.appendChild(item);
+      panel.appendChild(item);
     });
-    modal.appendChild(el("p", { class: "muted", text: t("redflagRestartCta") }));
-    modal.appendChild(
-      el("button", {
-        class: "btn btn-primary",
-        text: ui("restart"),
-        onclick: restartSession,
-      })
-    );
-    overlay.appendChild(modal);
-    return overlay;
+    return panel;
   }
 
-  // Tier "soft" (ALARM/WAARSCHUWING) — niet-blokkerende banner. De therapeut
-  // kan gewoon verder klikken in de vragenlijst/resultaten (deze banner
-  // onderschept geen klikken op de rest van de pagina); elke melding moet
-  // wel individueel aangevinkt worden voor ze uit de banner verdwijnt.
-  function renderRedFlagBanner(unackedSoft) {
-    const banner = el("div", { class: "redflag-banner" });
-    banner.appendChild(el("h3", { text: t("redflagBannerTitle") }));
-    banner.appendChild(el("p", { class: "muted", text: t("redflagBannerIntro") }));
-    unackedSoft.forEach((f) => {
-      const item = el("div", { class: "redflag-item redflag-item-soft" });
-      item.appendChild(el("strong", { text: f.label }));
-      item.appendChild(el("span", { text: f.message }));
-      const ackRow = el("div", { class: "redflag-ack-row" });
-      const checkboxId = `redflag-ack-${f.id}`;
-      const checkbox = el("input", { type: "checkbox", id: checkboxId });
-      checkbox.addEventListener("change", () => {
-        if (checkbox.checked) {
-          ackedRedFlagIds.add(f.id);
-          render();
-        }
-      });
-      ackRow.appendChild(checkbox);
-      const label = el("label", { text: t("redflagAckLabel") });
-      label.setAttribute("for", checkboxId);
-      ackRow.appendChild(label);
-      item.appendChild(ackRow);
-      banner.appendChild(item);
-    });
-    return banner;
-  }
-
-  // Gedeelde restart-logica (Spoor 1.4, taak #105) — dezelfde reset als de
-  // bestaande "Opnieuw beginnen"-knop in renderResults, nu ook aanroepbaar
-  // vanuit de blokkerende red-flag-overlay. Reset bewust ook
-  // redFlags/ackedRedFlagIds: een nieuwe sessie start zonder de
-  // veiligheidsmeldingen van de vorige sessie.
+  // Gedeelde restart-logica — dezelfde reset als de bestaande "Opnieuw
+  // beginnen"-knop in renderResults. De veiligheidschecklist zelf hoeft hier
+  // niet meer gereset te worden (safetyChecklistOpen mag gewoon blijven staan
+  // zoals de therapeut het had ingesteld) — ze is niet langer sessie- of
+  // antwoordgebonden.
   function restartSession() {
     context = { role: null, female: null, pediatric: null };
     introStep = "lang";
     answers = {};
     resultData = null;
     patientLabelInput = "";
-    redFlags = [];
-    ackedRedFlagIds = new Set();
     screen = "intro";
     render();
   }
@@ -810,6 +759,32 @@
             onclick: () => {
               screenBeforeReferences = screen;
               screen = "references";
+              render();
+            },
+          })
+        );
+      }
+
+      // Veiligheidschecklist-toggle (MDR-veilig-lanceren, 04/09) — enkel
+      // zichtbaar zodra er iets in te tonen valt (server geeft een lege
+      // lijst voor de patiëntrol, zie flow.js), en verborgen op dezelfde
+      // schermen/gate-toestanden als de Referenties-knop hierboven. Puur een
+      // open/dicht-toggle voor renderSafetyChecklistPanel() — geen enkele
+      // koppeling met de huidige sessie of ingevulde antwoorden.
+      if (
+        safetyChecklist.length &&
+        screen !== "admin" &&
+        screen !== "billing" &&
+        screen !== "references" &&
+        !isAccessBlocked() &&
+        !isPatientFilling()
+      ) {
+        bar.appendChild(
+          el("button", {
+            class: "btn btn-ghost",
+            text: t("safetyChecklistToggle"),
+            onclick: () => {
+              safetyChecklistOpen = !safetyChecklistOpen;
               render();
             },
           })
@@ -1341,13 +1316,16 @@
       // knoppen in een chatapp.
       thread.appendChild(el("div", { class: "assistant-speech", text: ui("assistantChooseTitle") }));
 
+      // MDR-veilig-lanceren (04/09, launch-blocker): de server stuurt per
+      // patroon enkel nog {pattern, mei_zin} mee — punten (concrete
+      // acupunctuurpunten) en leefstijl/kruiden-advies zijn server-side
+      // verwijderd (zie buildResultPayload in src/routes/flow.js), niet enkel
+      // hier verborgen. Enkel de algemene, educatieve toelichting blijft over.
       assistantOpenedPatterns.forEach((idx) => {
         const m = therapyPlan.matched[idx];
         if (!m) return;
         const parts = [el("strong", { text: m.pattern })];
         if (m.mei_zin) parts.push(el("p", { text: m.mei_zin }));
-        if (m.punten) parts.push(el("p", { text: `${t("therapyPlanPoints")}: ${m.punten}` }));
-        if (m.leefstijl) parts.push(el("p", { text: `${t("therapyPlanLifestyle")}: ${m.leefstijl}` }));
         thread.appendChild(el("div", { class: "assistant-speech" }, parts));
       });
       if (assistantUnmatchedOpened && therapyPlan.unmatchedCount) {
@@ -1410,19 +1388,10 @@
     try {
       const data = await api("/api/flow/next", "POST", { lang, context, answers });
       flowBusy = false;
-      redFlags = data.redFlags || [];
-      // NOODSIGNAAL (tier "hard") — de flow stopt hier bewust: currentQuestion
-      // wordt NIET bijgewerkt naar de volgende vraag (die blijft dus
-      // onbereikbaar/onbeantwoord), enkel de overlay wordt getoond. Zonder
-      // deze vroege return zou de interview-flow gewoon naar de volgende
-      // vraag doorlopen terwijl de blokkerende melding er toevallig
-      // bovenop ligt — het chooseOption()-guard hierboven voorkomt dan wel
-      // een VOLGEND antwoord, maar de vraag zelf zou al onterecht
-      // verspringen. Zie redflag-block-test.mjs scenario 1.
-      if (redFlags.some((f) => f.tier === "hard")) {
-        render();
-        return;
-      }
+      // MDR-veilig-lanceren (04/09): de checklist is statisch en blokkeert de
+      // flow niet meer — gewoon overnemen voor het (niet-blokkerende)
+      // referentiepaneel, geen enkele tier-afhandeling meer nodig hier.
+      safetyChecklist = data.safetyChecklist || [];
       if (data.done) {
         await fetchResult();
         return;
@@ -1473,16 +1442,9 @@
   }
 
   async function chooseOption(optionIndex) {
-    // Spoor 1.4 (taak #104/#105) — functionele blokkade, niet enkel
-    // visueel. De redflag-overlay ligt weliswaar bovenop de rest van de
-    // pagina (CSS z-index), maar dat houdt enkel echte muisklikken tegen;
-    // een onderliggende knop blijft anders technisch nog aanklikbaar/
-    // programmatisch bereikbaar (bv. toetsenbordnavigatie, of automatische
-    // tests — zie de bugfix-toelichting bij dit commit). Zolang er een
-    // tier "hard" (NOODSIGNAAL) redFlag actief is, mag chooseOption() dus
-    // sowieso niets versturen, ongeacht hoe de aanroep tot stand kwam.
-    if (redFlags.some((f) => f.tier === "hard")) return;
-
+    // MDR-veilig-lanceren (04/09): er is geen enkele blokkade meer op basis
+    // van patiëntantwoorden — de vroegere NOODSIGNAAL-guard hier is
+    // verwijderd, zie de toelichting bij safetyChecklist hierboven.
     const key = currentQuestion.key;
     flowBusy = true;
     render();
@@ -1512,7 +1474,7 @@
       });
       resultData = data.result;
       resultSessionId = data.sessionId;
-      redFlags = data.result.redFlags || [];
+      safetyChecklist = data.result.safetyChecklist || [];
       assistantPopupDismissed = false;
       assistantConversationOpen = false;
       assistantOpenedPatterns = [];
@@ -1745,19 +1707,11 @@
 
     let guard = 0;
     while (screen === "interview" && currentQuestion && guard++ < 200) {
-      // Bugfix (na klantfeedback): niet blindelings options[0] kiezen. De
-      // veiligheidscontrole (sectie s0safety, taak #104) heeft per vraag als
-      // EERSTE optie steeds het ernstigste NOODSIGNAAL-antwoord staan (bv.
-      // "Plotse verlamming, spraakverlies of scheve mond"), dus options[0]
-      // triggerde tijdens de demo-autofill gegarandeerd meteen een
-      // blokkerende hard-redFlag-melding. We kiezen daarom de eerste optie
-      // ZONDER redFlag-koppeling (voor de veiligheidsvragen is dat steeds
-      // "Geen van deze"); voor alle overige, normale vragen (die geen enkele
-      // optie met .redFlag hebben) blijft dit gewoon options[0], identiek
-      // aan het oude gedrag.
-      const opts = currentQuestion.question.options;
-      const opt = opts.find((o) => !o.redFlag) || opts[0];
-      await chooseOption(opt.index);
+      // MDR-veilig-lanceren (04/09): de sectie s0safety (en daarmee elke
+      // .redFlag-koppeling op een antwoordoptie) bestaat niet meer — er is
+      // dus ook geen speciale blokkerende melding meer om tijdens de
+      // demo-autofill te vermijden. Gewoon altijd de eerste optie kiezen.
+      await chooseOption(currentQuestion.question.options[0].index);
     }
 
     autoDemoBusy = false;
