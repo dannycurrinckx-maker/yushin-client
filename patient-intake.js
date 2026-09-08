@@ -16,6 +16,11 @@
 
   const API_BASE_KEY = "yushin_api_base";
   const apiBase = localStorage.getItem(API_BASE_KEY) || "https://yushin-saas.dannycurrinckx.workers.dev";
+  // Voorlezen (taak #141) — zelfde opt-in gedrag als app.js: standaard uit,
+  // aan te zetten via het spraakballon-icoon bij elke vraag. Op dit scherm
+  // (patiënt vult zelf in, vaak op eigen telefoon in de wachtkamer) minstens
+  // even relevant als in de hoofdapp.
+  const VOICE_KEY = "yushin_voice_enabled";
 
   // Het token leeft uitsluitend in de URL, nooit in localStorage: dit is een
   // eenmalig, gedeeld toestel-onafhankelijk bezoek (de patiënt scant de
@@ -33,6 +38,13 @@
   let flowBusy = false;
   let flowError = "";
   let resultData = null;
+  let voiceEnabled = (() => {
+    try {
+      return localStorage.getItem(VOICE_KEY) === "1";
+    } catch (err) {
+      return false;
+    }
+  })();
 
   // Kleine, eigen UI-woordenschat (paginachrome) — analoog aan de lokale
   // `UI`-tabel in app.js. Bewust GEEN eigen klinische/juridische tekst: de
@@ -312,12 +324,47 @@
       }
       currentQuestion = data;
       progress = data.progress;
+      // Enkel voorlezen als de patiënt dat zelf aanzette — nooit automatisch.
+      if (voiceEnabled) speakText(currentQuestion.question.text);
       render();
     } catch (err) {
       flowBusy = false;
       flowError = err.message;
       render();
     }
+  }
+
+  // --- Voorlezen (Web Speech API, taak #141) --------------------------------
+  function speechSupported() {
+    return typeof window !== "undefined" && "speechSynthesis" in window;
+  }
+  function speechLangTag() {
+    return lang === "nl" ? "nl-NL" : lang === "fr" ? "fr-FR" : "en-US";
+  }
+  function speakText(text) {
+    if (!speechSupported() || !text) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = speechLangTag();
+      window.speechSynthesis.speak(utter);
+    } catch (err) {
+      // Voorlezen mag nooit de flow breken — stil negeren.
+    }
+  }
+  function setVoiceEnabled(next) {
+    voiceEnabled = next;
+    try {
+      localStorage.setItem(VOICE_KEY, next ? "1" : "0");
+    } catch (err) {}
+    if (next && currentQuestion) {
+      speakText(currentQuestion.question.text);
+    } else if (!next && speechSupported()) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (err) {}
+    }
+    render();
   }
 
   function renderInterview() {
@@ -343,7 +390,38 @@
     if (currentQuestion.isNewSection) {
       wrap.appendChild(el("div", { class: "section-title", text: currentQuestion.sectionTitle }));
     }
-    wrap.appendChild(el("h2", { text: currentQuestion.question.text }));
+
+    const questionRow = el("div", { class: "question-row" });
+    questionRow.appendChild(el("h2", { text: currentQuestion.question.text }));
+    if (speechSupported()) {
+      questionRow.appendChild(
+        el("button", {
+          class: "voice-toggle-btn" + (voiceEnabled ? " voice-toggle-btn-on" : ""),
+          type: "button",
+          title: voiceEnabled ? t("voiceOn") : t("voiceHintText"),
+          "aria-label": voiceEnabled ? t("voiceOn") : t("voiceHintText"),
+          text: voiceEnabled ? "🔊" : "💬",
+          onclick: () => setVoiceEnabled(!voiceEnabled),
+        })
+      );
+      if (voiceEnabled) {
+        questionRow.appendChild(
+          el("button", {
+            class: "voice-replay-btn",
+            type: "button",
+            title: t("replayTitle"),
+            "aria-label": t("replayTitle"),
+            text: "🔁",
+            onclick: () => speakText(currentQuestion.question.text),
+          })
+        );
+      }
+    } else {
+      questionRow.appendChild(
+        el("span", { class: "voice-toggle-btn voice-toggle-btn-disabled", title: t("voiceUnsupported"), text: "💬" })
+      );
+    }
+    wrap.appendChild(questionRow);
 
     const opts = el("div", { class: "options" });
     currentQuestion.question.options.forEach((opt) => {
@@ -374,6 +452,11 @@
   // --- Scherm: resultaat ----------------------------------------------------
 
   async function fetchResult() {
+    if (speechSupported()) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (err) {}
+    }
     try {
       const data = await api("/api/public/intake/result", "POST", {
         token,

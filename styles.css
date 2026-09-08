@@ -172,6 +172,31 @@ p { line-height: 1.5; }
 
 .section-title { color: var(--accent); font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
 
+/* Voorlezen (taak #141) — spraakballon-icoon staat standaard uit; zie app.js
+   renderInterview/setVoiceEnabled. */
+.question-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+.question-row h2 { flex: 1; margin: 0; }
+.voice-toggle-btn,
+.voice-replay-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 999px;
+  width: 34px;
+  height: 34px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.voice-toggle-btn:hover,
+.voice-replay-btn:hover { border-color: var(--accent); }
+.voice-toggle-btn-on { border-color: var(--accent); color: var(--accent); }
+.voice-toggle-btn-disabled { opacity: 0.4; cursor: default; }
+
 .progress { height: 6px; background: var(--accent-light); border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
 .progress-fill { height: 100%; background: var(--accent); transition: width 0.2s ease; }
 .progress-label { margin-bottom: 14px; }

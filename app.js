@@ -30,6 +30,12 @@
   const API_BASE_KEY = "yushin_api_base";
   const TOKEN_KEY = "yushin_token";
   const USER_KEY = "yushin_user";
+  // Voorlezen (taak #141) — staat bewust standaard UIT (Danny, 08/09): geen
+  // automatisch afspelen van geluid zonder dat de gebruiker daar zelf voor
+  // koos. Het spraakballon-icoon bij elke vraag (zie renderInterview) laat
+  // dit indien gewenst aanzetten; de keuze wordt onthouden voor volgende
+  // bezoeken via localStorage.
+  const VOICE_KEY = "yushin_voice_enabled";
 
   let apiBase = localStorage.getItem(API_BASE_KEY) || "https://yushin-saas.dannycurrinckx.workers.dev";
   let token = localStorage.getItem(TOKEN_KEY) || null;
@@ -54,6 +60,15 @@
   let progress = { answered: 0, total: 0 };
   let flowError = "";
   let flowBusy = false;
+  // Standaard false tenzij de gebruiker het zelf ooit expliciet aanzette
+  // (zie VOICE_KEY hierboven).
+  let voiceEnabled = (() => {
+    try {
+      return localStorage.getItem(VOICE_KEY) === "1";
+    } catch (err) {
+      return false;
+    }
+  })();
 
   let resultData = null;
   let resultSessionId = null;
@@ -1398,12 +1413,56 @@
       }
       currentQuestion = data;
       progress = data.progress;
+      // Enkel voorlezen als de gebruiker dat zelf aanzette (voiceEnabled) —
+      // zie VOICE_KEY/setVoiceEnabled hierboven. Nooit automatisch aan.
+      if (voiceEnabled) speakText(currentQuestion.question.text);
       render();
     } catch (err) {
       flowBusy = false;
       flowError = err.message;
       render();
     }
+  }
+
+  // --- Voorlezen (Web Speech API, taak #141) --------------------------------
+  // Comfortfunctie, nooit blokkerend: elke aanroep zit in een try/catch en
+  // ontbrekende browserondersteuning wordt stil genegeerd (geen foutmelding
+  // aan de gebruiker — het spraakballon-icoon verdwijnt dan gewoon, zie
+  // renderInterview).
+
+  function speechSupported() {
+    return typeof window !== "undefined" && "speechSynthesis" in window;
+  }
+
+  function speechLangTag() {
+    return lang === "nl" ? "nl-NL" : lang === "fr" ? "fr-FR" : "en-US";
+  }
+
+  function speakText(text) {
+    if (!speechSupported() || !text) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = speechLangTag();
+      window.speechSynthesis.speak(utter);
+    } catch (err) {
+      // Voorlezen mag nooit de flow breken — stil negeren.
+    }
+  }
+
+  function setVoiceEnabled(next) {
+    voiceEnabled = next;
+    try {
+      localStorage.setItem(VOICE_KEY, next ? "1" : "0");
+    } catch (err) {}
+    if (next && currentQuestion) {
+      speakText(currentQuestion.question.text);
+    } else if (!next && speechSupported()) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (err) {}
+    }
+    render();
   }
 
   function renderInterview() {
@@ -1430,7 +1489,43 @@
     if (currentQuestion.isNewSection) {
       wrap.appendChild(el("div", { class: "section-title", text: currentQuestion.sectionTitle }));
     }
-    wrap.appendChild(el("h2", { text: currentQuestion.question.text }));
+
+    const questionRow = el("div", { class: "question-row" });
+    questionRow.appendChild(el("h2", { text: currentQuestion.question.text }));
+    // Voorlezen (taak #141) — standaard uit; het tekstballon-icoon (💬) is de
+    // opt-in. Eenmaal aangezet wordt elke nieuwe vraag automatisch voorgelezen
+    // (zie fetchNext) en toont het icoon zelf 🔊 met een apart 🔁-knopje om de
+    // huidige vraag desgewenst opnieuw te horen. Zonder browserondersteuning
+    // voor de Web Speech API tonen we een niet-klikbare, gedimde variant.
+    if (speechSupported()) {
+      questionRow.appendChild(
+        el("button", {
+          class: "voice-toggle-btn" + (voiceEnabled ? " voice-toggle-btn-on" : ""),
+          type: "button",
+          title: voiceEnabled ? t("voiceOn") : t("voiceHintText"),
+          "aria-label": voiceEnabled ? t("voiceOn") : t("voiceHintText"),
+          text: voiceEnabled ? "🔊" : "💬",
+          onclick: () => setVoiceEnabled(!voiceEnabled),
+        })
+      );
+      if (voiceEnabled) {
+        questionRow.appendChild(
+          el("button", {
+            class: "voice-replay-btn",
+            type: "button",
+            title: t("replayTitle"),
+            "aria-label": t("replayTitle"),
+            text: "🔁",
+            onclick: () => speakText(currentQuestion.question.text),
+          })
+        );
+      }
+    } else {
+      questionRow.appendChild(
+        el("span", { class: "voice-toggle-btn voice-toggle-btn-disabled", title: t("voiceUnsupported"), text: "💬" })
+      );
+    }
+    wrap.appendChild(questionRow);
 
     const opts = el("div", { class: "options" });
     currentQuestion.question.options.forEach((opt) => {
@@ -1465,6 +1560,13 @@
   // --- Scherm: resultaat ----------------------------------------------------
 
   async function fetchResult() {
+    // Eventuele nog lopende voorlees-audio van de laatste vraag stoppen —
+    // het resultaatscherm heeft geen eigen voorleesknop.
+    if (speechSupported()) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (err) {}
+    }
     try {
       const data = await api("/api/flow/result", "POST", {
         lang,
