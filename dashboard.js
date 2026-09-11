@@ -26,7 +26,7 @@
   const TOKEN_KEY = "yushin_token";
   const USER_KEY = "yushin_user";
 
-  const apiBase = localStorage.getItem(API_BASE_KEY) || "https://yushin-saas.dannycurrinckx.workers.dev";
+  const apiBase = localStorage.getItem(API_BASE_KEY) || "https://yushin-backend.onrender.com";
   const token = localStorage.getItem(TOKEN_KEY) || null;
   const currentUser = JSON.parse(localStorage.getItem(USER_KEY) || "null");
 
@@ -62,10 +62,15 @@
     }
   }
 
-  async function apiRequest(method, path) {
+  async function apiRequest(method, path, body) {
+    const hasBody = body !== undefined;
     const res = await fetch(apiBase + path, {
       method,
-      headers: { Authorization: "Bearer " + token },
+      headers: Object.assign(
+        { Authorization: "Bearer " + token },
+        hasBody ? { "Content-Type": "application/json" } : {}
+      ),
+      body: hasBody ? JSON.stringify(body) : undefined,
     });
     if (res.status === 401) {
       localStorage.removeItem(TOKEN_KEY);
@@ -81,8 +86,8 @@
   function apiGet(path) {
     return apiRequest("GET", path);
   }
-  function apiPost(path) {
-    return apiRequest("POST", path);
+  function apiPost(path, body) {
+    return apiRequest("POST", path, body);
   }
   function apiDelete(path) {
     return apiRequest("DELETE", path);
@@ -291,6 +296,35 @@
       }
       box.appendChild(tpCard);
     }
+
+    // Taak #141b — feedback van de testtherapeut op deze sessie (indien
+    // ingediend via het resultatenscherm in app.js, zie
+    // handleSubmitSessionFeedback in sessions.js). Enkel tonen als er
+    // effectief feedback is; geen lege kaart voor sessies zonder feedback.
+    if (session.feedback) {
+      const fb = session.feedback;
+      const stars = "★".repeat(fb.rating) + "☆".repeat(5 - fb.rating);
+      const fbCard = el("div", { class: "card" }, [
+        el("div", { class: "card-title", text: "Feedback van de tester" }),
+        el("p", { class: "conclusion-text", text: stars + " (" + fb.rating + "/5)" }),
+      ]);
+      if (fb.wouldRecommend !== null) {
+        fbCard.appendChild(
+          el("p", {
+            class: "clock-note",
+            style: "text-align:left;margin:4px 0",
+            text: "Zou aanraden aan een collega: " + (fb.wouldRecommend ? "Ja" : "Nee"),
+          })
+        );
+      }
+      if (fb.comment) {
+        fbCard.appendChild(el("div", { class: "contradiction-item" }, [el("span", { text: fb.comment })]));
+      }
+      fbCard.appendChild(
+        el("p", { class: "clock-note", style: "text-align:left;margin:4px 0", text: formatDate(fb.createdAt) })
+      );
+      box.appendChild(fbCard);
+    }
   }
 
   // --- Wachtkamer-QR (taak #134) -------------------------------------------
@@ -432,6 +466,155 @@
     }
   }
 
+  // --- Toegangscodes (taak #141b, platform-admin) --------------------------
+  //
+  // Bewust GEEN client-side controle of de ingelogde gebruiker platform-admin
+  // is (die informatie is hier niet beschikbaar en zou ook makkelijk te
+  // omzeilen zijn) — de navigatie-knop is voor iedereen zichtbaar, maar de
+  // eerste aanroep (GET /api/platform-admin/access-codes) is de echte
+  // poort: bij een 403 van de server tonen we een duidelijke "geen
+  // toegang"-melding i.p.v. het formulier, zie requirePlatformAdmin in
+  // index.js.
+
+  function renderAdminForm(box) {
+    box.innerHTML = "";
+
+    const codeInput = el("input", { class: "link-input", type: "text", placeholder: "bv. GRATIS-TEST-01", id: "acCode" });
+    const kindSelect = el("select", { class: "admin-select", id: "acKind" }, [
+      el("option", { value: "free", text: "Gratis (ontgrendelt de praktijk)" }),
+      el("option", { value: "discount", text: "Korting (bij afrekenen)" }),
+    ]);
+    const discountInput = el("input", { class: "link-input", type: "number", min: "1", max: "99", placeholder: "bv. 20", id: "acDiscount" });
+    const maxUsesInput = el("input", { class: "link-input", type: "number", min: "1", placeholder: "leeg = onbeperkt aantal keer bruikbaar", id: "acMaxUses" });
+    const sessionLimitInput = el("input", { class: "link-input", type: "number", min: "1", placeholder: "leeg = onbeperkte toegang (geen testlimiet)", id: "acSessionLimit" });
+    const noteInput = el("input", { class: "link-input", type: "text", placeholder: "bv. voor tester Jan V.", id: "acNote" });
+
+    const discountRow = el("div", { class: "admin-form-row", id: "acDiscountRow" }, [
+      el("label", { text: "Kortingspercentage (1-99)" }),
+      discountInput,
+    ]);
+    const sessionLimitRow = el("div", { class: "admin-form-row", id: "acSessionLimitRow" }, [
+      el("label", { text: "Sessielimiet (aantal gratis analyses vóór afsluiting)" }),
+      sessionLimitInput,
+    ]);
+
+    function syncKindVisibility() {
+      const kind = kindSelect.value;
+      discountRow.style.display = kind === "discount" ? "" : "none";
+      sessionLimitRow.style.display = kind === "free" ? "" : "none";
+    }
+    kindSelect.addEventListener("change", syncKindVisibility);
+
+    const errorBox = el("div", { class: "error-state", id: "acError", style: "display:none;padding:10px 0;text-align:left" });
+    const okBox = el("div", { class: "copy-feedback", id: "acOk", style: "display:none" });
+
+    box.appendChild(
+      el("div", { class: "admin-form" }, [
+        el("div", { class: "admin-form-row" }, [el("label", { text: "Code" }), codeInput]),
+        el("div", { class: "admin-form-row" }, [el("label", { text: "Soort" }), kindSelect]),
+        discountRow,
+        sessionLimitRow,
+        el("div", { class: "admin-form-row" }, [el("label", { text: "Max. aantal keer bruikbaar" }), maxUsesInput]),
+        el("div", { class: "admin-form-row" }, [el("label", { text: "Notitie (optioneel)" }), noteInput]),
+        errorBox,
+        okBox,
+        el("div", { class: "btn-row" }, [
+          el("button", { class: "btn btn-primary", onclick: handleCreateCode, text: "Code aanmaken" }),
+        ]),
+      ])
+    );
+
+    syncKindVisibility();
+  }
+
+  function renderAdminList(box, codes) {
+    box.innerHTML = "";
+    if (!codes.length) {
+      box.appendChild(el("div", { class: "empty-state", text: "Nog geen toegangscodes aangemaakt." }));
+      return;
+    }
+    codes.forEach((c) => {
+      const parts = [c.kind === "free" ? "Gratis" : "Korting " + c.discountPercent + "%"];
+      if (c.kind === "free") parts.push(c.sessionLimit ? c.sessionLimit + " analyses" : "onbeperkte toegang");
+      parts.push((c.useCount || 0) + "× gebruikt" + (c.maxUses ? " / max " + c.maxUses : ""));
+      parts.push(c.active ? "actief" : "ingetrokken");
+      box.appendChild(
+        el("div", { class: "contradiction-item" }, [
+          el("strong", { text: c.code }),
+          el("span", { text: parts.join(" · ") + (c.note ? " — " + c.note : "") }),
+        ])
+      );
+    });
+  }
+
+  async function loadAdminList() {
+    const listBox = document.getElementById("adminListBox");
+    try {
+      const data = await apiGet("/api/platform-admin/access-codes");
+      renderAdminList(listBox, data.codes || []);
+    } catch (err) {
+      listBox.innerHTML = "";
+      listBox.appendChild(el("div", { class: "error-state", text: "Kon toegangscodes niet laden: " + err.message }));
+    }
+  }
+
+  async function loadAdminPage() {
+    const formBox = document.getElementById("adminFormBox");
+    const listBox = document.getElementById("adminListBox");
+    formBox.innerHTML = "";
+    listBox.innerHTML = '<div class="loading-state">Bezig met laden…</div>';
+    try {
+      const data = await apiGet("/api/platform-admin/access-codes");
+      renderAdminForm(formBox);
+      renderAdminList(listBox, data.codes || []);
+    } catch (err) {
+      listBox.innerHTML = "";
+      const geenToegang = /platformbeheer/i.test(err.message);
+      listBox.appendChild(
+        el("div", {
+          class: "error-state",
+          text: geenToegang
+            ? "Deze pagina is enkel toegankelijk voor platformbeheer. Je bent ingelogd met een account dat daar niet toe behoort."
+            : "Kon toegangscodes niet laden: " + err.message,
+        })
+      );
+    }
+  }
+
+  async function handleCreateCode() {
+    const codeEl = document.getElementById("acCode");
+    const kindEl = document.getElementById("acKind");
+    const discountEl = document.getElementById("acDiscount");
+    const maxUsesEl = document.getElementById("acMaxUses");
+    const sessionLimitEl = document.getElementById("acSessionLimit");
+    const noteEl = document.getElementById("acNote");
+    const errorBox = document.getElementById("acError");
+    const okBox = document.getElementById("acOk");
+    errorBox.style.display = "none";
+    okBox.style.display = "none";
+
+    const body = { code: codeEl.value.trim(), kind: kindEl.value };
+    if (kindEl.value === "discount" && discountEl.value) body.discountPercent = parseInt(discountEl.value, 10);
+    if (maxUsesEl.value) body.maxUses = parseInt(maxUsesEl.value, 10);
+    if (kindEl.value === "free" && sessionLimitEl.value) body.sessionLimit = parseInt(sessionLimitEl.value, 10);
+    if (noteEl.value.trim()) body.note = noteEl.value.trim();
+
+    try {
+      await apiPost("/api/platform-admin/access-codes", body);
+      okBox.textContent = "Code aangemaakt.";
+      okBox.style.display = "";
+      codeEl.value = "";
+      discountEl.value = "";
+      maxUsesEl.value = "";
+      sessionLimitEl.value = "";
+      noteEl.value = "";
+      await loadAdminList();
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.style.display = "";
+    }
+  }
+
   async function openSession(id) {
     showPage("detail");
     document.getElementById("detailBox").innerHTML = '<div class="loading-state">Bezig met laden…</div>';
@@ -454,6 +637,7 @@
       // aanroep zelf is goedkoop — zelfde afweging als loadSessionList
       // hieronder, die ook niet cachet.
       if (item.dataset.page === "qr") loadQrPage();
+      else if (item.dataset.page === "admin") loadAdminPage();
     });
   });
   document.getElementById("backLink").addEventListener("click", () => showPage("list"));

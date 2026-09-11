@@ -15,7 +15,7 @@
   "use strict";
 
   const API_BASE_KEY = "yushin_api_base";
-  const apiBase = localStorage.getItem(API_BASE_KEY) || "https://yushin-saas.dannycurrinckx.workers.dev";
+  const apiBase = localStorage.getItem(API_BASE_KEY) || "https://yushin-backend.onrender.com";
   // Voorlezen (taak #141) — zelfde opt-in gedrag als app.js: standaard uit,
   // aan te zetten via het spraakballon-icoon bij elke vraag. Op dit scherm
   // (patiënt vult zelf in, vaak op eigen telefoon in de wachtkamer) minstens

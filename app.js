@@ -37,7 +37,7 @@
   // bezoeken via localStorage.
   const VOICE_KEY = "yushin_voice_enabled";
 
-  let apiBase = localStorage.getItem(API_BASE_KEY) || "https://yushin-saas.dannycurrinckx.workers.dev";
+  let apiBase = localStorage.getItem(API_BASE_KEY) || "https://yushin-backend.onrender.com";
   let token = localStorage.getItem(TOKEN_KEY) || null;
   let currentUser = JSON.parse(localStorage.getItem(USER_KEY) || "null");
 
@@ -73,6 +73,18 @@
   let resultData = null;
   let resultSessionId = null;
   let patientLabelInput = "";
+
+  // Ingebouwde feedbackstap (taak #141b) — draft-waarden + status van het
+  // kleine, overslaanbare blokje onderaan het resultatenscherm (zie
+  // renderSessionFeedback). Bewust GEEN persistente localStorage-opslag: dit
+  // is per-sessie, niet iets dat tussen sessies onthouden hoeft te worden.
+  let feedbackRatingDraft = 0;
+  let feedbackRecommendDraft = null;
+  let feedbackCommentDraft = "";
+  let feedbackSubmitted = false;
+  let feedbackDismissed = false;
+  let feedbackBusy = false;
+  let feedbackError = "";
 
   // Veiligheidschecklist (MDR-veilig-lanceren, 04/09, launch-blocker).
   // Voorheen ("Spoor 1.4", taak #104/#105) berekende de server dit uit de
@@ -335,6 +347,20 @@
       referencesTitle: "Referenties",
       referencesPlaceholder:
         "Deze sectie is in ontwikkeling. Klassieke bronteksten en canonieke referentie-informatie worden hier binnenkort toegevoegd.",
+
+      // Ingebouwde feedbackstap (taak #141b) — kort, overslaanbaar blokje
+      // onderaan het resultatenscherm.
+      feedbackTitle: "Wat vond je van deze sessie?",
+      feedbackRatingLabel: "Score",
+      feedbackRecommendLabel: "Zou je Yushin aanraden aan een collega?",
+      feedbackRecommendYes: "Ja",
+      feedbackRecommendNo: "Nee",
+      feedbackCommentLabel: "Opmerking (optioneel)",
+      feedbackCommentPlaceholder: "Wat werkte goed, wat kan beter?",
+      feedbackSubmitBtn: "Feedback versturen",
+      feedbackSkipBtn: "Overslaan",
+      feedbackThanks: "Bedankt voor je feedback!",
+      feedbackRatingRequired: "Kies eerst een score (1-5) voordat je verstuurt.",
     },
     en: {
       appTitle: "Yushin",
@@ -439,6 +465,18 @@
       referencesTitle: "References",
       referencesPlaceholder:
         "This section is in development. Classical source texts and canonical reference information will be added here soon.",
+
+      feedbackTitle: "What did you think of this session?",
+      feedbackRatingLabel: "Score",
+      feedbackRecommendLabel: "Would you recommend Yushin to a colleague?",
+      feedbackRecommendYes: "Yes",
+      feedbackRecommendNo: "No",
+      feedbackCommentLabel: "Comment (optional)",
+      feedbackCommentPlaceholder: "What worked well, what could be better?",
+      feedbackSubmitBtn: "Send feedback",
+      feedbackSkipBtn: "Skip",
+      feedbackThanks: "Thanks for your feedback!",
+      feedbackRatingRequired: "Choose a score (1-5) first before sending.",
     },
   };
   function ui(key) {
@@ -612,8 +650,22 @@
     answers = {};
     resultData = null;
     patientLabelInput = "";
+    resetFeedbackDraft();
     screen = "intro";
     render();
+  }
+
+  // Taak #141b — één plek om de feedback-draft terug te zetten, zodat een
+  // vorige (verstuurde of overgeslagen) sessie nooit doorlekt naar het
+  // volgende resultatenscherm.
+  function resetFeedbackDraft() {
+    feedbackRatingDraft = 0;
+    feedbackRecommendDraft = null;
+    feedbackCommentDraft = "";
+    feedbackSubmitted = false;
+    feedbackDismissed = false;
+    feedbackBusy = false;
+    feedbackError = "";
   }
 
   function renderTopBar() {
@@ -1577,6 +1629,7 @@
       resultData = data.result;
       resultSessionId = data.sessionId;
       safetyChecklist = data.result.safetyChecklist || [];
+      resetFeedbackDraft();
       assistantPopupDismissed = false;
       assistantConversationOpen = false;
       assistantOpenedPatterns = [];
@@ -1756,6 +1809,13 @@
     // afzonderlijk gedeelde/afgedrukte pagina altijd deze context toont.
     wrap.appendChild(el("p", { class: "muted intended-use-footer", text: t("intendedUseFooter") }));
 
+    // Taak #141b — kort, overslaanbaar feedbackblokje; null zodra al
+    // verstuurd/overgeslagen, of als er (uitzonderlijk) geen sessionId is
+    // (bv. autoDemoActive-sessies persisteren wel gewoon, dus dit is enkel
+    // een defensieve check).
+    const feedbackBlock = renderSessionFeedback();
+    if (feedbackBlock) wrap.appendChild(feedbackBlock);
+
     wrap.appendChild(
       el("button", {
         class: "btn btn-primary",
@@ -1765,6 +1825,132 @@
     );
 
     return wrap;
+  }
+
+  // Taak #141b — losstaand van renderResults() zodat submitSessionFeedback
+  // hieronder een gerichte re-render kan triggeren zonder de rest van het
+  // (soms lange) rapport opnieuw te hoeven doorlopen — render() bouwt
+  // sowieso de hele DOM opnieuw op, maar de functiegrens houdt dit blokje
+  // makkelijk leesbaar/testbaar apart van het rapport zelf.
+  function renderSessionFeedback() {
+    if (!resultSessionId || feedbackDismissed) return null;
+
+    const box = el("div", { class: "card session-feedback-card" });
+
+    if (feedbackSubmitted) {
+      box.appendChild(el("p", { class: "muted", text: t("feedbackThanks") }));
+      return box;
+    }
+
+    box.appendChild(el("h3", { text: t("feedbackTitle") }));
+
+    if (feedbackError) {
+      box.appendChild(el("div", { class: "error", text: feedbackError }));
+    }
+
+    box.appendChild(el("div", { class: "muted", text: t("feedbackRatingLabel") }));
+    const stars = el("div", { class: "feedback-stars" });
+    for (let i = 1; i <= 5; i++) {
+      stars.appendChild(
+        el("button", {
+          class: "feedback-star-btn" + (i <= feedbackRatingDraft ? " feedback-star-btn-on" : ""),
+          type: "button",
+          text: i <= feedbackRatingDraft ? "★" : "☆",
+          "aria-label": String(i),
+          onclick: () => {
+            feedbackRatingDraft = i;
+            render();
+          },
+        })
+      );
+    }
+    box.appendChild(stars);
+
+    box.appendChild(el("div", { class: "muted", text: t("feedbackRecommendLabel") }));
+    const recommendRow = el("div", { class: "feedback-recommend-row" });
+    recommendRow.appendChild(
+      el("button", {
+        class: "btn btn-ghost" + (feedbackRecommendDraft === true ? " feedback-choice-on" : ""),
+        type: "button",
+        text: t("feedbackRecommendYes"),
+        onclick: () => {
+          feedbackRecommendDraft = true;
+          render();
+        },
+      })
+    );
+    recommendRow.appendChild(
+      el("button", {
+        class: "btn btn-ghost" + (feedbackRecommendDraft === false ? " feedback-choice-on" : ""),
+        type: "button",
+        text: t("feedbackRecommendNo"),
+        onclick: () => {
+          feedbackRecommendDraft = false;
+          render();
+        },
+      })
+    );
+    box.appendChild(recommendRow);
+
+    box.appendChild(el("label", { class: "muted", text: t("feedbackCommentLabel") }));
+    box.appendChild(
+      el("input", {
+        type: "text",
+        maxlength: "500",
+        placeholder: t("feedbackCommentPlaceholder"),
+        value: feedbackCommentDraft,
+        oninput: (e) => (feedbackCommentDraft = e.target.value),
+      })
+    );
+
+    const actions = el("div", { class: "feedback-actions" });
+    actions.appendChild(
+      el("button", {
+        class: "btn btn-primary",
+        type: "button",
+        text: feedbackBusy ? ui("loading") : t("feedbackSubmitBtn"),
+        onclick: submitSessionFeedback,
+      })
+    );
+    actions.appendChild(
+      el("button", {
+        class: "btn btn-ghost",
+        type: "button",
+        text: t("feedbackSkipBtn"),
+        onclick: () => {
+          feedbackDismissed = true;
+          render();
+        },
+      })
+    );
+    box.appendChild(actions);
+
+    return box;
+  }
+
+  async function submitSessionFeedback() {
+    if (!feedbackRatingDraft) {
+      feedbackError = t("feedbackRatingRequired");
+      render();
+      return;
+    }
+    feedbackBusy = true;
+    feedbackError = "";
+    render();
+    try {
+      await api(`/api/sessions/${encodeURIComponent(resultSessionId)}/feedback`, "POST", {
+        rating: feedbackRatingDraft,
+        wouldRecommend: feedbackRecommendDraft,
+        comment: feedbackCommentDraft || undefined,
+      });
+      feedbackBusy = false;
+      feedbackSubmitted = true;
+      render();
+    } catch (err) {
+      feedbackBusy = false;
+      feedbackError = err.message;
+      render();
+    }
   }
 
   // --- Automatische demo-invulling (taak #90) --------------------------------
