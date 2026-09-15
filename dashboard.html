@@ -124,6 +124,12 @@
   .link-input { flex: 1; min-width: 0; background: var(--bg-2); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text); padding: 9px 12px; font-size: 12.5px; font-family: "SFMono-Regular", Menlo, monospace; }
   .copy-feedback { font-size: 12px; color: var(--green); margin-top: 8px; min-height: 14px; }
   .qr-empty-state { text-align: left; padding: 6px 0; }
+
+  /* Taak #141b — Toegangscodes (platform-admin) */
+  .admin-form { display: flex; flex-direction: column; gap: 14px; max-width: 420px; }
+  .admin-form-row { display: flex; flex-direction: column; gap: 6px; }
+  .admin-form-row label { font-size: 12.5px; color: var(--text-muted); font-weight: 500; }
+  .admin-select { background: var(--bg-2); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text); padding: 9px 12px; font-size: 13px; font-family: inherit; }
 </style>
 </head>
 <body>
@@ -142,6 +148,10 @@
       <button class="nav-item" data-page="qr">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3"/><path d="M14 20h3"/><path d="M20 17v3"/></svg>
         Wachtkamer-QR
+      </button>
+      <button class="nav-item" data-page="admin">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/></svg>
+        Toegangscodes
       </button>
     </nav>
     <div class="sidebar-spacer"></div>
@@ -181,6 +191,21 @@
         <div class="card">
           <div class="card-title">Jouw QR-code en link</div>
           <div id="qrBox"><div class="loading-state">Bezig met laden…</div></div>
+        </div>
+      </section>
+
+      <section class="page" data-page="admin" id="pageAdmin">
+        <div class="page-header">
+          <div class="page-title">Toegangscodes</div>
+          <div class="page-subtitle">Enkel zichtbaar voor platformbeheer — gratis- en kortingscodes aanmaken en overzien.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Nieuwe code aanmaken</div>
+          <div id="adminFormBox"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Bestaande codes</div>
+          <div id="adminListBox"><div class="loading-state">Bezig met laden…</div></div>
         </div>
       </section>
 
