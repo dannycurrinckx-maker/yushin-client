@@ -527,6 +527,22 @@
     syncKindVisibility();
   }
 
+  // Taak #142 — code intrekken (active=0, geen harde verwijdering, zie
+  // deactivateAccessCode in db.js): enkel een knop bij nog-actieve codes,
+  // een al-ingetrokken code heeft niets meer in te trekken.
+  async function handleDeactivateCode(id, code) {
+    if (!confirm(`Toegangscode "${code}" intrekken? Ze werkt dan meteen niet meer bij het inwisselen — al wel gebruikte activaties blijven geldig.`)) {
+      return;
+    }
+    const listBox = document.getElementById("adminListBox");
+    try {
+      await apiDelete(`/api/platform-admin/access-codes/${id}`);
+      await loadAdminList();
+    } catch (err) {
+      listBox.appendChild(el("div", { class: "error-state", text: "Kon code niet intrekken: " + err.message }));
+    }
+  }
+
   function renderAdminList(box, codes) {
     box.innerHTML = "";
     if (!codes.length) {
@@ -538,12 +554,22 @@
       if (c.kind === "free") parts.push(c.sessionLimit ? c.sessionLimit + " analyses" : "onbeperkte toegang");
       parts.push((c.useCount || 0) + "× gebruikt" + (c.maxUses ? " / max " + c.maxUses : ""));
       parts.push(c.active ? "actief" : "ingetrokken");
-      box.appendChild(
-        el("div", { class: "contradiction-item" }, [
-          el("strong", { text: c.code }),
-          el("span", { text: parts.join(" · ") + (c.note ? " — " + c.note : "") }),
-        ])
-      );
+      const row = el("div", { class: "contradiction-item" }, [
+        el("strong", { text: c.code }),
+        el("span", { text: parts.join(" · ") + (c.note ? " — " + c.note : "") }),
+      ]);
+      if (c.active) {
+        row.appendChild(
+          el("button", {
+            class: "btn btn-danger btn-small",
+            type: "button",
+            text: "Intrekken",
+            onclick: () => handleDeactivateCode(c.id, c.code),
+          })
+
+        );
+      }
+      box.appendChild(row);
     });
   }
 
