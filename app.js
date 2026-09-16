@@ -136,13 +136,11 @@
   let autoDemoBusy = false;
   let autoDemoActive = false;
 
-  // Verborgen demo-toegang op het landingsscherm (taak #87) — een
-  // ingeklapt "Demo-toegang?"-linkje dat een codeveld toont; bij de juiste
-  // code (zie DEMO_ACCESS_CODE verderop) logt dit meteen in op het
-  // demo-praktijkaccount, net als de ?demo=1 querystring-shortcut. Bedoeld
-  // voor Danny om tijdens een live demo snel toegang te tonen zonder de
-  // link met ?demo=1 te moeten kennen/typen.
-  let showDemoCodeInput = false;
+  // Demo-toegang op het landingsscherm (taak #87, op verzoek van Danny
+  // omgebouwd van een verstopt linkje naar een eigen, altijd zichtbare kaart
+  // naast het inlogblok — duidelijk voor elke bezoeker). Bij de juiste code
+  // (zie DEMO_ACCESS_CODE verderop) logt dit meteen in op het
+  // demo-praktijkaccount, net als de ?demo=1 querystring-shortcut.
   let demoCodeValue = "";
   let demoCodeError = "";
 
@@ -290,9 +288,11 @@
         "Je praktijk is aangemaakt en klaar voor gebruik. Je kan meteen aan de slag met een eerste anamnese, of eerst collega's uitnodigen via het beheerpaneel.",
       onboardingGoTeam: "Ga naar Team beheren",
       onboardingGoIntake: "Start je eerste anamnese",
-      demoCodeToggle: "Demo-toegang?",
-      demoCodeLabel: "Admin-code",
-      demoCodeButton: "Ga",
+      demoCardTitle: "Demo uitproberen",
+      demoCardDescription:
+        "Liever eerst rondkijken zonder een eigen account? Log in op een demo-praktijk met voorbeelddata.",
+      demoCodeLabel: "Demo-code",
+      demoCodeButton: "Demo starten",
       demoCodeInvalid: "Ongeldige code.",
       // Taak #111 — "therapieplan-voorstel" hernoemd: geen behandelvoorstel,
       // enkel traditionele referentie-informatie (tab D rij 8/22).
@@ -417,9 +417,11 @@
         "Your practice has been created and is ready to use. You can start a first intake right away, or invite colleagues first via the admin panel.",
       onboardingGoTeam: "Go to Manage team",
       onboardingGoIntake: "Start your first intake",
-      demoCodeToggle: "Demo access?",
-      demoCodeLabel: "Admin code",
-      demoCodeButton: "Go",
+      demoCardTitle: "Try the demo",
+      demoCardDescription:
+        "Prefer to look around first without an account of your own? Log in to a demo practice with sample data.",
+      demoCodeLabel: "Demo code",
+      demoCodeButton: "Start demo",
       demoCodeInvalid: "Invalid code.",
       assistantAskShowPlan: "Would you like me to show traditional reference information for this pattern?",
       assistantShowPlanBtn: "Yes, show the information",
@@ -1010,27 +1012,15 @@
     }
   }
 
-  // Verborgen demo-toegang (taak #87) — ingeklapt onder het inlog-/
-  // registratieblok, bewust NIET prominent (dit is geen feature voor gewone
-  // bezoekers, enkel een snelkoppeling voor Danny tijdens een live demo).
+  // Demo-toegang (taak #87, herzien op verzoek van Danny) — nu een eigen,
+  // altijd zichtbare kaart naast het inlog-/registratieblok, met dezelfde
+  // visuele stijl (".card"), zodat het voor elke bezoeker meteen duidelijk
+  // is dat er een demo bestaat i.p.v. verstopt achter een klein linkje.
   // Zelfde bestemming als de ?demo=1 querystring-shortcut (taak #83).
   function renderDemoCodeBlock() {
-    const block = el("div", { class: "demo-code-block" });
-
-    if (!showDemoCodeInput) {
-      block.appendChild(
-        el("button", {
-          class: "btn-link demo-code-toggle",
-          type: "button",
-          text: ui("demoCodeToggle"),
-          onclick: () => {
-            showDemoCodeInput = true;
-            render();
-          },
-        })
-      );
-      return block;
-    }
+    const block = el("div", { class: "card demo-card" });
+    block.appendChild(el("h2", { text: ui("demoCardTitle") }));
+    block.appendChild(el("p", { class: "muted", text: ui("demoCardDescription") }));
 
     const form = el("form", {
       class: "demo-code-form",
@@ -1044,7 +1034,6 @@
         type: "password",
         placeholder: ui("demoCodeLabel"),
         value: demoCodeValue,
-        autofocus: "autofocus",
         oninput: (e) => (demoCodeValue = e.target.value),
       })
     );
