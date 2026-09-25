@@ -5,7 +5,7 @@
 // bepaalt enkel hoe dat getekend wordt.
 
 const ORGAN_CLOCK = [
-  {h1:21,h2:23,organ:"Pericard",   note:"Stress, Shen"},
+  {h1:21,h2:23,organ:"San Jiao",   note:"Drievoudige Verwarmer (TE), thermoregulatie"},
   {h1:23,h2:25,organ:"Galblaas",   note:"Besluiteloosheid, Shao Yang"},
   {h1:25,h2:27,organ:"Lever",      note:"Qi-stagnatie, Vuur, emoties"},
   {h1:27,h2:29,organ:"Long",       note:"Verdriet, Wei Qi, Yin"},
